@@ -20,6 +20,7 @@ import { useWishlist } from '@/stores/wishlist';
 import { useCompare } from '@/stores/compare';
 import type { Product, ProductVariant, Specification, Review } from '@/types';
 import toast from 'react-hot-toast';
+import catalogData from '@/data/catalog.json';
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -45,16 +46,28 @@ export function ProductDetailPage() {
       setLoading(true);
       try {
         const { data } = await api.get(`/products/${slug}`);
-        const p: Product = data.data;
-        setProduct(p);
-
-        // Auto select first variant if available
-        if (p.variants && p.variants.length > 0) {
-          setSelectedVariant(p.variants[0]);
+        let p: Product | undefined = data?.data;
+        if (!p || typeof p !== 'object' || !p.name) {
+          const fallback = (catalogData.products as unknown as Product[]).find((it) => it.slug === slug);
+          if (fallback) p = fallback;
         }
-        setSelectedImage(productImage(p));
+        if (p) {
+          setProduct(p);
+          if (p.variants && p.variants.length > 0) {
+            setSelectedVariant(p.variants[0]);
+          }
+          setSelectedImage(productImage(p));
+        }
       } catch (err) {
         console.error(err);
+        const fallback = (catalogData.products as unknown as Product[]).find((it) => it.slug === slug);
+        if (fallback) {
+          setProduct(fallback);
+          if (fallback.variants && fallback.variants.length > 0) {
+            setSelectedVariant(fallback.variants[0]);
+          }
+          setSelectedImage(productImage(fallback));
+        }
       } finally {
         setLoading(false);
       }

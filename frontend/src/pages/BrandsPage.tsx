@@ -4,16 +4,20 @@ import api from '@/lib/api';
 import { BrandLogo } from '@/components/BrandLogo';
 import type { Brand } from '@/types';
 import { Loader2, ArrowRight } from 'lucide-react';
+import catalogData from '@/data/catalog.json';
 
 export function BrandsPage() {
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(true);
+  const allBrands = (catalogData.brands as unknown as Brand[]) || [];
+  const [brands, setBrands] = useState<Brand[]>(() => allBrands);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchBrands() {
       try {
         const { data } = await api.get('/brands');
-        setBrands(data.data || []);
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          setBrands(data.data);
+        }
       } catch (err) {
         console.error(err);
       } finally {

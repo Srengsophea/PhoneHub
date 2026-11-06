@@ -142,7 +142,19 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
 }
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // If Vercel or a SPA host rewrote the API route to index.html with 200 OK
+    const isHtml = typeof res.data === 'string' && (res.data.includes('<!DOCTYPE') || res.data.includes('<html'));
+    const isInvalid = !res.data || (typeof res.data === 'object' && !('data' in res.data) && !Array.isArray(res.data));
+
+    if (isHtml || isInvalid) {
+      const fallback = handleOfflineFallback(res.config?.url || '', res.config?.method, res.config?.data);
+      if (fallback) {
+        return fallback as any;
+      }
+    }
+    return res;
+  },
   (error: AxiosError) => {
     if (error.response?.status === 401) {
       localStorage.removeItem(TOKEN_KEY);

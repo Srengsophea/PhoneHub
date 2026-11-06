@@ -5,15 +5,25 @@ import api from '@/lib/api';
 import { ProductCard } from '@/components/ProductCard';
 import { Button, Pagination, Select } from '@/components/ui';
 import type { Product, Brand, Category, PaginationMeta } from '@/types';
+import catalogData from '@/data/catalog.json';
 
 export function ProductListingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const allProds = (catalogData.products as unknown as Product[]) || [];
+  const allBrands = (catalogData.brands as unknown as Brand[]) || [];
+  const allCategories = (catalogData.categories as unknown as Category[]) || [];
+
+  const [products, setProducts] = useState<Product[]>(() => allProds.slice(0, 12));
+  const [meta, setMeta] = useState<PaginationMeta | null>(() => ({
+    current_page: 1,
+    last_page: Math.ceil(allProds.length / 12),
+    total: allProds.length,
+    per_page: 12,
+  }));
+  const [brands, setBrands] = useState<Brand[]>(() => allBrands);
+  const [categories, setCategories] = useState<Category[]>(() => allCategories);
+  const [loading, setLoading] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Read current query filters
@@ -50,8 +60,10 @@ export function ProductListingPage() {
         if (!params.has('per_page')) params.set('per_page', '12');
 
         const { data } = await api.get(`/products?${params.toString()}`);
-        setProducts(data.data || []);
-        setMeta(data.meta || null);
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          setProducts(data.data);
+          setMeta(data.meta || null);
+        }
       } catch (err) {
         console.error(err);
       } finally {
