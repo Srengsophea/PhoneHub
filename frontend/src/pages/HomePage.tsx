@@ -1,0 +1,312 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  ArrowRight,
+  ShieldCheck,
+  ChevronRight,
+  Truck,
+  RotateCcw,
+  Sparkles,
+  Award,
+  Zap,
+} from 'lucide-react';
+import api from '@/lib/api';
+import { ProductCard } from '@/components/ProductCard';
+import { BrandLogo } from '@/components/BrandLogo';
+import type { Product, Brand } from '@/types';
+import { Button } from '@/components/ui';
+
+export function HomePage() {
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [bestsellers, setBestsellers] = useState<Product[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeSpotlight, setActiveSpotlight] = useState(0);
+
+  const spotlightDevices = [
+    {
+      id: 'iphone-16-pro-max',
+      name: 'iPhone 16 Pro Max',
+      brand: 'Apple',
+      tag: 'Titanium Grade 5',
+      specs: 'A18 Pro (3nm) • 48MP Fusion • 5x Optical Zoom',
+      price: '$1,199.00',
+      oldPrice: '$1,299.00',
+      image: '/images/products/iphone-16-pro-max.png',
+      link: '/products/iphone-16-pro-max',
+    },
+    {
+      id: 'samsung-galaxy-s25-ultra',
+      name: 'Galaxy S25 Ultra',
+      brand: 'Samsung',
+      tag: 'Snapdragon 8 Elite',
+      specs: '200MP Quad Tele • Dynamic AMOLED 2X • S-Pen',
+      price: '$1,299.00',
+      oldPrice: '$1,399.00',
+      image: '/images/products/samsung-galaxy-s25-ultra.png',
+      link: '/products/samsung-galaxy-s25-ultra',
+    },
+    {
+      id: 'google-pixel-9-pro-xl',
+      name: 'Pixel 9 Pro XL',
+      brand: 'Google',
+      tag: 'Tensor G4 AI',
+      specs: 'Pro Triple Visor • Super Actua OLED • 16GB RAM',
+      price: '$1,099.00',
+      oldPrice: '$1,199.00',
+      image: '/images/products/google-pixel-9-pro-xl.png',
+      link: '/products/google-pixel-9-pro-xl',
+    },
+  ];
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [featRes, bestRes, brandRes] = await Promise.all([
+          api.get('/products?featured=1&per_page=4'),
+          api.get('/products?sort=best_selling&per_page=8'),
+          api.get('/brands'),
+        ]);
+        setFeatured(featRes.data.data || []);
+        setBestsellers(bestRes.data.data || []);
+        setBrands(brandRes.data.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  return (
+    <div className="space-y-16 sm:space-y-24 pb-20">
+      {/* Clean Premium Studio Light Hero */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-zinc-50/60 via-white to-white pt-8 sm:pt-14 pb-12 sm:pb-20 border-b border-zinc-100">
+        <div className="container-page">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+            {/* Left Headline pitch */}
+            <div className="lg:col-span-7 space-y-7 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 shadow-2xs">
+                <Sparkles className="h-4 w-4 text-brand-600 animate-pulse" />
+                <span className="text-xs font-semibold tracking-wide text-zinc-800">
+                  2026 Flagship Showcase • Sealed & Certified
+                </span>
+              </div>
+
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-zinc-950 leading-[1.06]">
+                Engineered for speed. <br />
+                <span className="bg-gradient-to-r from-zinc-950 via-brand-600 to-indigo-600 bg-clip-text text-transparent">
+                  Crafted for prestige.
+                </span>
+              </h1>
+
+              <p className="text-base sm:text-lg text-zinc-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                Discover next-generation titanium designs, cinema-grade camera systems, and all-day battery efficiency from Apple, Samsung, Google, and more.
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+                <Link to="/products">
+                  <Button size="lg" className="bg-zinc-950 text-white hover:bg-zinc-800 font-bold px-8 shadow-sm gap-2">
+                    Explore Collection
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/brands">
+                  <Button variant="outline" size="lg" className="border-zinc-200 text-zinc-900 hover:bg-zinc-50">
+                    Browse Brands
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Trust Specs row */}
+              <div className="grid grid-cols-3 gap-6 pt-8 border-t border-zinc-100 max-w-lg mx-auto lg:mx-0 text-left">
+                <div>
+                  <p className="text-2xl font-extrabold text-zinc-950">100%</p>
+                  <p className="text-xs text-zinc-500 font-medium mt-0.5">Sealed & Genuine</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-extrabold text-zinc-950">1-Year</p>
+                  <p className="text-xs text-zinc-500 font-medium mt-0.5">Official Warranty</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-extrabold text-zinc-950">Free</p>
+                  <p className="text-xs text-zinc-500 font-medium mt-0.5">Orders Over $500</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Hero Showcase - Pure Studio Phone Stage (No Cramped Card, Pure Transparent Floating Device) */}
+            <div className="lg:col-span-5 relative flex flex-col items-center justify-center">
+              {/* Device Selector Tabs */}
+              <div className="inline-flex items-center gap-1 p-1 bg-zinc-100 rounded-2xl mb-4 border border-zinc-200/60 shadow-2xs">
+                {spotlightDevices.map((dev, idx) => (
+                  <button
+                    key={dev.id}
+                    type="button"
+                    onClick={() => setActiveSpotlight(idx)}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+                      activeSpotlight === idx
+                        ? 'bg-white text-zinc-950 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-900'
+                    }`}
+                  >
+                    {dev.brand}
+                  </button>
+                ))}
+              </div>
+
+              {/* Seamless Studio Stage */}
+              <Link
+                to={spotlightDevices[activeSpotlight].link}
+                className="group relative flex flex-col items-center justify-center w-full max-w-sm text-center"
+              >
+                {/* Phone Image (Large, Clean Transparent PNG - Zero Boxes, Zero Borders) */}
+                <div className="relative w-full h-[380px] sm:h-[420px] flex items-center justify-center">
+                  <img
+                    key={spotlightDevices[activeSpotlight].id}
+                    src={spotlightDevices[activeSpotlight].image}
+                    alt={spotlightDevices[activeSpotlight].name}
+                    className="h-full w-full object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-105"
+                  />
+                </div>
+
+                {/* Ground Contact Shadow beneath phone base */}
+                <div className="w-48 sm:w-56 h-3 rounded-full bg-zinc-900/10 blur-md mx-auto -mt-2" />
+
+                {/* Device Info & Specs Badge */}
+                <div className="mt-6 space-y-1.5">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
+                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                    <span>{spotlightDevices[activeSpotlight].tag}</span>
+                    <span className="text-zinc-300">•</span>
+                    <span className="text-emerald-600 font-bold">In Stock</span>
+                  </div>
+
+                  <h3 className="text-2xl font-extrabold tracking-tight text-zinc-950">
+                    {spotlightDevices[activeSpotlight].name}
+                  </h3>
+                  <p className="text-xs text-zinc-500 font-medium">
+                    {spotlightDevices[activeSpotlight].specs}
+                  </p>
+
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <span className="text-xl font-extrabold text-zinc-950">
+                      {spotlightDevices[activeSpotlight].price}
+                    </span>
+                    <span className="text-sm text-zinc-400 line-through">
+                      {spotlightDevices[activeSpotlight].oldPrice}
+                    </span>
+                    <span className="text-xs font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-0.5 ml-2 group-hover:underline">
+                      View Details <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Authorized Brands (Using REAL BRAND LOGOS) */}
+      <section className="container-page">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
+              Authorized Manufacturers
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-950 mt-1">
+              Shop by Official Brand
+            </h2>
+            <p className="text-sm text-zinc-500 mt-1">
+              Guaranteed genuine products direct from official suppliers.
+            </p>
+          </div>
+          <Link
+            to="/brands"
+            className="text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 hidden sm:flex"
+          >
+            All Brands <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {/* Real Brand Logos Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+          {brands.slice(0, 12).map((brand) => (
+            <Link
+              key={brand.id}
+              to={`/products?brand=${brand.slug}`}
+              className="group flex flex-col items-center justify-center p-6 rounded-3xl border border-zinc-200/80 bg-white hover:border-zinc-950 hover:shadow-soft transition-all duration-300 text-center"
+            >
+              <BrandLogo
+                name={brand.name}
+                slug={brand.slug}
+                className="w-14 h-14 mb-3 transition-transform duration-300 group-hover:scale-110"
+              />
+              <span className="text-sm font-bold text-zinc-900 group-hover:text-brand-600 transition">
+                {brand.name}
+              </span>
+              <span className="text-[11px] text-zinc-400 mt-0.5">
+                {brand.products_count ?? 0} models
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured Flagship Phones (LARGE CARD STAGES) */}
+      {featured.length > 0 && (
+        <section className="container-page">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
+                Curated
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-950 mt-1">
+                Featured Flagships
+              </h2>
+            </div>
+            <Link
+              to="/products?featured=1"
+              className="text-sm font-semibold text-zinc-700 hover:text-zinc-950 flex items-center gap-1"
+            >
+              View All <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {featured.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Trending / Bestseller section */}
+      <section className="container-page">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+              Popular Choices
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-950 mt-1">
+              Top Customer Choices
+            </h2>
+          </div>
+          <Link
+            to="/products?sort=best_selling"
+            className="text-sm font-semibold text-zinc-700 hover:text-zinc-950 flex items-center gap-1"
+          >
+            Explore More <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8">
+          {bestsellers.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
