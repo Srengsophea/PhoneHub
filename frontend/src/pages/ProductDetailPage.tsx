@@ -71,6 +71,7 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [buyingNow, setBuyingNow] = useState(false);
 
   // Review form state
   const [reviewRating, setReviewRating] = useState(5);
@@ -144,8 +145,6 @@ export function ProductDetailPage() {
     : product.sale_price ? product.base_price : null;
 
   const inStock = selectedVariant ? selectedVariant.stock > 0 : true;
-
-  const [buyingNow, setBuyingNow] = useState(false);
 
   // Extract separate unique storage capacities and colors
   const storages = Array.from(
