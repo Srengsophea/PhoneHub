@@ -4,6 +4,7 @@ import {
   ArrowRight,
   ShieldCheck,
   ChevronRight,
+  ChevronLeft,
   Truck,
   RotateCcw,
   Sparkles,
@@ -30,6 +31,7 @@ export function HomePage() {
   const [brands, setBrands] = useState<Brand[]>(() => allBrands);
   const [loading, setLoading] = useState(false);
   const [activeSpotlight, setActiveSpotlight] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const spotlightDevices = [
     {
@@ -66,6 +68,31 @@ export function HomePage() {
       link: '/products/google-pixel-9-pro-xl',
     },
   ];
+
+  // Preload all spotlight images
+  useEffect(() => {
+    spotlightDevices.forEach((dev) => {
+      const img = new Image();
+      img.src = dev.image;
+    });
+  }, []);
+
+  // 5-second auto-loop timer
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setActiveSpotlight((prev) => (prev + 1) % spotlightDevices.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isPaused, activeSpotlight]);
+
+  const handleNextSpotlight = () => {
+    setActiveSpotlight((prev) => (prev + 1) % spotlightDevices.length);
+  };
+
+  const handlePrevSpotlight = () => {
+    setActiveSpotlight((prev) => (prev - 1 + spotlightDevices.length) % spotlightDevices.length);
+  };
 
   useEffect(() => {
     async function load() {
@@ -150,73 +177,140 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Right Hero Showcase - Pure Studio Phone Stage (No Cramped Card, Pure Transparent Floating Device) */}
-            <div className="lg:col-span-5 relative flex flex-col items-center justify-center">
-              {/* Device Selector Tabs */}
-              <div className="inline-flex items-center gap-1 p-1 bg-zinc-100 rounded-2xl mb-4 border border-zinc-200/60 shadow-2xs">
-                {spotlightDevices.map((dev, idx) => (
-                  <button
-                    key={dev.id}
-                    type="button"
-                    onClick={() => setActiveSpotlight(idx)}
-                    className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-                      activeSpotlight === idx
-                        ? 'bg-white text-zinc-950 shadow-sm'
-                        : 'text-zinc-500 hover:text-zinc-900'
-                    }`}
-                  >
-                    {dev.brand}
-                  </button>
-                ))}
+            {/* Right Hero Showcase - Pure Studio Phone Stage with 5s Auto-Loop & Smooth Transitions */}
+            <div
+              className="lg:col-span-5 relative flex flex-col items-center justify-center group/stage select-none"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+            >
+              {/* Device Selector Tabs with 5s Live Progress Bar & Clean Rounded-MD */}
+              <div className="inline-flex items-center gap-1 p-1 bg-zinc-100 rounded-lg mb-4 border border-zinc-200/60 shadow-2xs">
+                {spotlightDevices.map((dev, idx) => {
+                  const isActive = activeSpotlight === idx;
+                  return (
+                    <button
+                      key={dev.id}
+                      type="button"
+                      onClick={() => setActiveSpotlight(idx)}
+                      className={`relative overflow-hidden px-4 py-1.5 text-xs font-bold rounded-md transition-all duration-200 ${
+                        isActive
+                          ? 'bg-white text-zinc-950 shadow-xs'
+                          : 'text-zinc-500 hover:text-zinc-900'
+                      }`}
+                    >
+                      <span className="relative z-10">{dev.brand}</span>
+                      {isActive && (
+                        <span
+                          key={`progress-${idx}`}
+                          className="absolute bottom-0 left-0 h-0.5 bg-zinc-950 rounded-full"
+                          style={{
+                            animation: isPaused
+                              ? 'none'
+                              : 'spotlight-progress 5s linear forwards',
+                            width: isPaused ? '100%' : undefined,
+                          }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Prev & Next Floating Navigation Arrows (hover over stage to reveal) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handlePrevSpotlight();
+                }}
+                aria-label="Previous phone"
+                className="absolute left-0 sm:-left-4 top-[40%] -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white/90 backdrop-blur text-zinc-700 hover:text-zinc-950 shadow-md border border-zinc-200/80 flex items-center justify-center transition-all duration-200 opacity-0 group-hover/stage:opacity-100 hover:scale-105"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleNextSpotlight();
+                }}
+                aria-label="Next phone"
+                className="absolute right-0 sm:-right-4 top-[40%] -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white/90 backdrop-blur text-zinc-700 hover:text-zinc-950 shadow-md border border-zinc-200/80 flex items-center justify-center transition-all duration-200 opacity-0 group-hover/stage:opacity-100 hover:scale-105"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
 
               {/* Seamless Studio Stage */}
               <Link
                 to={spotlightDevices[activeSpotlight].link}
                 className="group relative flex flex-col items-center justify-center w-full max-w-sm text-center"
               >
-                {/* Phone Image (Large, Clean Transparent PNG - Zero Boxes, Zero Borders) */}
-                <div className="relative w-full h-[380px] sm:h-[420px] flex items-center justify-center">
-                  <img
-                    key={spotlightDevices[activeSpotlight].id}
-                    src={spotlightDevices[activeSpotlight].image}
-                    alt={spotlightDevices[activeSpotlight].name}
-                    className="h-full w-full object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-105"
-                  />
-                </div>
-
-                {/* Ground Contact Shadow beneath phone base */}
-                <div className="w-48 sm:w-56 h-3 rounded-full bg-zinc-900/10 blur-md mx-auto -mt-2" />
-
-                {/* Device Info & Specs Badge */}
-                <div className="mt-6 space-y-1.5">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                    <span>{spotlightDevices[activeSpotlight].tag}</span>
-                    <span className="text-zinc-300">•</span>
-                    <span className="text-emerald-600 font-bold">In Stock</span>
+                <div
+                  key={spotlightDevices[activeSpotlight].id}
+                  className="animate-hero-glide flex flex-col items-center w-full"
+                >
+                  {/* Phone Image (Large, Clean Transparent PNG - Zero Boxes, Zero Borders) */}
+                  <div className="relative w-full h-[380px] sm:h-[420px] flex items-center justify-center">
+                    <img
+                      src={spotlightDevices[activeSpotlight].image}
+                      alt={spotlightDevices[activeSpotlight].name}
+                      className="h-full w-full object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-105"
+                    />
                   </div>
 
-                  <h3 className="text-2xl font-extrabold tracking-tight text-zinc-950">
-                    {spotlightDevices[activeSpotlight].name}
-                  </h3>
-                  <p className="text-xs text-zinc-500 font-medium">
-                    {spotlightDevices[activeSpotlight].specs}
-                  </p>
+                  {/* Ground Contact Shadow beneath phone base */}
+                  <div className="w-48 sm:w-56 h-3 rounded-full bg-zinc-900/10 blur-md mx-auto -mt-2" />
 
-                  <div className="flex items-center justify-center gap-3 pt-2">
-                    <span className="text-xl font-extrabold text-zinc-950">
-                      {spotlightDevices[activeSpotlight].price}
-                    </span>
-                    <span className="text-sm text-zinc-400 line-through">
-                      {spotlightDevices[activeSpotlight].oldPrice}
-                    </span>
-                    <span className="text-xs font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-0.5 ml-2 group-hover:underline">
-                      View Details <ChevronRight className="h-3.5 w-3.5" />
-                    </span>
+                  {/* Device Info & Specs Badge */}
+                  <div className="mt-6 space-y-1.5">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
+                      <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                      <span>{spotlightDevices[activeSpotlight].tag}</span>
+                      <span className="text-zinc-300">•</span>
+                      <span className="text-emerald-600 font-bold">In Stock</span>
+                    </div>
+
+                    <h3 className="text-2xl font-extrabold tracking-tight text-zinc-950">
+                      {spotlightDevices[activeSpotlight].name}
+                    </h3>
+                    <p className="text-xs text-zinc-500 font-medium">
+                      {spotlightDevices[activeSpotlight].specs}
+                    </p>
+
+                    <div className="flex items-center justify-center gap-3 pt-2">
+                      <span className="text-xl font-extrabold text-zinc-950">
+                        {spotlightDevices[activeSpotlight].price}
+                      </span>
+                      <span className="text-sm text-zinc-400 line-through">
+                        {spotlightDevices[activeSpotlight].oldPrice}
+                      </span>
+                      <span className="text-xs font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-0.5 ml-2 group-hover:underline">
+                        View Details <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
                   </div>
                 </div>
               </Link>
+
+              {/* Slide Pill Dots (5s loop indicator) */}
+              <div className="flex items-center gap-1.5 mt-4">
+                {spotlightDevices.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveSpotlight(idx)}
+                    aria-label={`Go to ${spotlightDevices[idx].name}`}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      activeSpotlight === idx
+                        ? 'w-6 bg-zinc-950'
+                        : 'w-1.5 bg-zinc-300 hover:bg-zinc-400'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>

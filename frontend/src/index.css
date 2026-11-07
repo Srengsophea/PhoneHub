@@ -22,6 +22,7 @@
   --animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-slide-in-right: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-scale-in: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-hero-glide: hero-glide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -38,6 +39,20 @@
   @keyframes scale-in {
     from { opacity: 0; transform: scale(0.96); }
     to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes hero-glide {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes spotlight-progress {
+    from { width: 0%; }
+    to { width: 100%; }
   }
 }
 
