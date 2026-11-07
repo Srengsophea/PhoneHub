@@ -343,20 +343,21 @@ export function ProductDetailPage() {
             </p>
           )}
 
-          {/* Separate Selectors: Space (Storage) & Color */}
+          {/* Separate Selectors: Space (Storage + RAM) & Color */}
           {product.variants && product.variants.length > 0 && (
-            <div className="space-y-5 pt-1">
+            <div className="space-y-4 pt-1">
               {/* 1. Storage / Space Capacity Selection */}
               {storages.length > 0 && (
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-zinc-900">
-                    <span>Space (Storage):</span>
-                    <span className="text-zinc-500 font-medium normal-case tracking-normal">
-                      {selectedVariant?.storage || storages[0]}
+                    <span>Space (Storage & RAM):</span>
+                    <span className="text-zinc-600 font-semibold normal-case tracking-normal">
+                      {selectedVariant?.storage}
+                      {selectedVariant?.ram ? ` / ${selectedVariant.ram}` : ''}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {storages.map((storage) => {
                       const isSelected = selectedVariant?.storage === storage;
                       const variantForStorage = product.variants?.find((v) => v.storage === storage);
@@ -365,22 +366,24 @@ export function ProductDetailPage() {
                           key={storage}
                           type="button"
                           onClick={() => handleStorageSelect(storage)}
-                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                          className={`px-3 py-2 rounded-md border text-left transition-all ${
                             isSelected
-                              ? 'border-2 border-zinc-950 bg-zinc-50/70 shadow-xs ring-1 ring-zinc-950/5'
-                              : 'border border-zinc-200/90 bg-white text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50/60'
+                              ? 'border-2 border-zinc-950 bg-zinc-50/90 shadow-xs'
+                              : 'border border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 hover:bg-zinc-50/50'
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-extrabold text-zinc-950 tracking-tight">{storage}</span>
-                            {isSelected && (
-                              <span className="h-4 w-4 rounded-full bg-zinc-950 text-white flex items-center justify-center">
-                                <Check className="h-2.5 w-2.5 stroke-[3]" />
-                              </span>
-                            )}
+                          {/* Line 1: Storage & RAM + Checkmark */}
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-bold text-zinc-950 tracking-tight truncate">
+                              {storage}
+                              {variantForStorage?.ram ? ` / ${variantForStorage.ram}` : ''}
+                            </span>
+                            {isSelected && <Check className="h-3.5 w-3.5 text-zinc-950 stroke-[2.5] shrink-0" />}
                           </div>
+
+                          {/* Line 2: Price */}
                           {variantForStorage && (
-                            <p className="text-xs font-bold text-zinc-700 mt-1">
+                            <p className="text-xs font-semibold text-zinc-600 mt-0.5">
                               {formatPrice(variantForStorage.sale_price ?? variantForStorage.price)}
                             </p>
                           )}
@@ -393,15 +396,15 @@ export function ProductDetailPage() {
 
               {/* 2. Color Selection */}
               {colors.length > 0 && (
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-zinc-900">
                     <span>Color:</span>
-                    <span className="text-zinc-500 font-medium normal-case tracking-normal">
+                    <span className="text-zinc-600 font-semibold normal-case tracking-normal">
                       {selectedVariant?.color || colors[0]?.name}
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2.5">
+                  <div className="flex flex-wrap gap-2">
                     {colors.map((c) => {
                       const isSelected =
                         selectedVariant?.color?.toLowerCase() === c.name.toLowerCase();
@@ -410,19 +413,19 @@ export function ProductDetailPage() {
                           key={c.name}
                           type="button"
                           onClick={() => handleColorSelect(c.name)}
-                          className={`flex items-center gap-2 px-3.5 py-2 rounded-full border transition-all ${
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all ${
                             isSelected
-                              ? 'border-2 border-zinc-950 bg-zinc-50/80 text-zinc-950 font-bold shadow-xs'
-                              : 'border border-zinc-200/90 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50/60'
+                              ? 'border-2 border-zinc-950 bg-zinc-50/90 text-zinc-950 font-bold shadow-xs'
+                              : 'border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50/50'
                           }`}
                         >
-                          {/* Color Swatch Circle */}
+                          {/* Color Swatch Square */}
                           <span
-                            className="h-4 w-4 rounded-full border border-black/15 shadow-xs shrink-0"
+                            className="h-3.5 w-3.5 rounded-xs border border-black/20 shrink-0"
                             style={{ backgroundColor: c.hex }}
                           />
-                          <span className="text-xs">{c.name}</span>
-                          {isSelected && <Check className="h-3 w-3 text-zinc-950 stroke-[3] ml-0.5" />}
+                          <span className="text-xs font-medium">{c.name}</span>
+                          {isSelected && <Check className="h-3 w-3 text-zinc-950 stroke-[2.5]" />}
                         </button>
                       );
                     })}
