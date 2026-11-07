@@ -226,8 +226,21 @@ export function ProductListingPage() {
         {/* Product Grid */}
         <div className="md:col-span-3 space-y-8">
           {loading ? (
-            <div className="flex h-96 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-zinc-200/80 bg-white p-4 space-y-4 shadow-soft">
+                  <div className="aspect-square w-full rounded-xl bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                  <div className="space-y-2">
+                    <div className="h-3 w-16 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                    <div className="h-4 w-3/4 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                    <div className="h-4 w-1/2 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                  </div>
+                  <div className="pt-2 flex items-center justify-between border-t border-zinc-100">
+                    <div className="h-5 w-20 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                    <div className="h-9 w-20 rounded-xl bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-24 rounded-3xl border border-zinc-200 bg-zinc-50/50">

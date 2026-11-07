@@ -190,22 +190,37 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={cn('h-5 w-5 animate-spin text-zinc-400', className)} />;
 }
 
-export function PageLoader() {
+export function PageLoader({ text = 'Loading PhoneHub...' }: { text?: string }) {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <Spinner className="h-7 w-7" />
+    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 animate-fade-in">
+      <div className="relative flex items-center justify-center">
+        <div className="h-12 w-12 rounded-full border-2 border-zinc-200 border-t-zinc-900 animate-spin" />
+        <img
+          src="/phonehub_logo.png"
+          alt="PhoneHub"
+          className="absolute h-6 w-auto object-contain animate-pulse"
+        />
+      </div>
+      <p className="text-xs font-semibold text-zinc-500 tracking-wide animate-pulse">{text}</p>
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-xl bg-zinc-100', className)} />;
+  return (
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-md bg-zinc-100 before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent',
+        className,
+      )}
+    />
+  );
 }
 
 export function EmptyState({ icon, title, description, action, className }: { icon?: ReactNode; title: string; description?: string; action?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center px-6 py-16 text-center', className)}>
-      {icon && <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-500">{icon}</div>}
+    <div className={cn('flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-in', className)}>
+      {icon && <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-500 shadow-2xs">{icon}</div>}
       <h3 className="text-base font-semibold text-zinc-900">{title}</h3>
       {description && <p className="mt-1.5 max-w-sm text-sm text-zinc-500">{description}</p>}
       {action && <div className="mt-6">{action}</div>}
@@ -235,20 +250,20 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   const w = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl', '2xl': 'max-w-6xl' }[size];
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4">
-      <div className="absolute inset-0 animate-fade-in bg-zinc-950/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className={cn('relative flex max-h-[92vh] w-full animate-scale-in flex-col rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl', w)}>
+      <div className="absolute inset-0 animate-fade-in bg-zinc-950/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div className={cn('relative flex max-h-[92vh] w-full animate-modal-pop flex-col rounded-t-2xl sm:rounded-2xl border border-zinc-200/80 bg-white shadow-2xl', w)}>
         {(title || description) && (
           <div className="flex items-start justify-between gap-4 border-b border-zinc-100 px-6 py-5">
             <div>
               {title && <h2 className="text-lg font-semibold tracking-tight text-zinc-900">{title}</h2>}
               {description && <p className="mt-1 text-sm text-zinc-500">{description}</p>}
             </div>
-            <button onClick={onClose} className="-mr-2 -mt-1 rounded-lg p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900" aria-label="Close">
+            <button onClick={onClose} className="-mr-2 -mt-1 rounded-lg p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 active:scale-95 transition" aria-label="Close">
               <X className="h-5 w-5" />
             </button>
           </div>
         )}
-        <div className="overflow-y-auto px-6 py-5">{children}</div>
+        <div className="overflow-y-auto px-6 py-5 scrollbar-none">{children}</div>
         {footer && <div className="flex items-center justify-end gap-2 border-t border-zinc-100 px-6 py-4">{footer}</div>}
       </div>
     </div>,

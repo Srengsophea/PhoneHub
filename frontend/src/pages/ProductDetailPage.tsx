@@ -144,8 +144,44 @@ export function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      <div className="container-page py-8 space-y-8 animate-fade-in">
+        {/* Breadcrumb Skeleton */}
+        <div className="h-4 w-48 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+
+        {/* Main Grid Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          {/* Gallery Skeleton */}
+          <div className="lg:col-span-6 space-y-4">
+            <div className="aspect-square w-full rounded-2xl border border-zinc-200/80 bg-zinc-50 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+            <div className="flex gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-20 w-20 rounded-xl bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+              ))}
+            </div>
+          </div>
+
+          {/* Buy Box Skeleton */}
+          <div className="lg:col-span-6 space-y-6">
+            <div className="space-y-3">
+              <div className="h-4 w-24 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+              <div className="h-9 w-3/4 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+              <div className="h-5 w-32 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+            </div>
+
+            <div className="h-10 w-44 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+
+            <div className="space-y-2">
+              <div className="h-4 w-28 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-14 rounded-md bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                ))}
+              </div>
+            </div>
+
+            <div className="h-12 w-full rounded-md bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+          </div>
+        </div>
       </div>
     );
   }
