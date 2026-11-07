@@ -339,22 +339,24 @@ export function HomePage() {
         </div>
 
         {/* Real Brand Logos Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
           {brands.slice(0, 12).map((brand) => (
             <Link
               key={brand.id}
               to={`/products?brand=${brand.slug}`}
-              className="group flex flex-col items-center justify-center p-6 rounded-3xl border border-zinc-200/80 bg-white hover:border-zinc-950 hover:shadow-soft transition-all duration-300 text-center"
+              className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-md border border-zinc-200 bg-white hover:border-zinc-950 hover:bg-zinc-50/50 hover:shadow-xs transition-all duration-200 text-center"
             >
-              <BrandLogo
-                name={brand.name}
-                slug={brand.slug}
-                className="w-14 h-14 mb-3 transition-transform duration-300 group-hover:scale-110"
-              />
-              <span className="text-sm font-bold text-zinc-900 group-hover:text-brand-600 transition">
+              <div className="h-9 flex items-center justify-center w-full transition-transform duration-200 group-hover:scale-105">
+                <BrandLogo
+                  name={brand.name}
+                  slug={brand.slug}
+                  className="h-7 w-auto"
+                />
+              </div>
+              <span className="text-xs sm:text-sm font-bold text-zinc-900 group-hover:text-zinc-950 mt-2.5 truncate w-full">
                 {brand.name}
               </span>
-              <span className="text-[11px] text-zinc-400 mt-0.5">
+              <span className="text-[11px] text-zinc-500 font-medium mt-0.5">
                 {brand.products_count ?? 0} models
               </span>
             </Link>
