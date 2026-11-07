@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '@/lib/api';
 import type { WishlistItem } from '@/types';
+import { useAuth } from './auth';
 
 interface WishlistState {
   items: WishlistItem[];
@@ -25,6 +26,11 @@ export const useWishlist = create<WishlistState>((set, get) => ({
   },
   /** Returns the new "is wishlisted" state. */
   toggle: async (productId) => {
+    const authUser = useAuth.getState().user;
+    if (!authUser) {
+      useAuth.getState().openAuthModal('login', 'Please sign in to your account to save items to your wishlist.');
+      return false;
+    }
     const had = get().has(productId);
     const ids = new Set(get().ids);
     if (had) ids.delete(productId);

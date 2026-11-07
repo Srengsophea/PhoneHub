@@ -5,10 +5,12 @@ import { formatPrice, productImage, productPricing } from '@/lib/format';
 import { useWishlist } from '@/stores/wishlist';
 import { useCompare } from '@/stores/compare';
 import { useCart } from '@/stores/cart';
+import { useAuth } from '@/stores/auth';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 export function ProductCard({ product }: { product: Product }) {
+  const { user, openAuthModal } = useAuth();
   const { toggle: toggleWishlist, has: inWishlist } = useWishlist();
   const { toggle: toggleCompare, has: inCompare } = useCompare();
   const { add: addToCart, loading: cartLoading } = useCart();
@@ -21,6 +23,10 @@ export function ProductCard({ product }: { product: Product }) {
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      openAuthModal('login', 'Please sign in to your account to add items to your cart.');
+      return;
+    }
     setAdding(true);
     const res = await addToCart(product.id);
     setAdding(false);
@@ -34,6 +40,10 @@ export function ProductCard({ product }: { product: Product }) {
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      openAuthModal('login', 'Please sign in to your account to save items to your wishlist.');
+      return;
+    }
     const nowIn = await toggleWishlist(product.id);
     toast.success(nowIn ? 'Added to wishlist' : 'Removed from wishlist');
   };

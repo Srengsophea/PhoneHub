@@ -4,9 +4,11 @@ import { Button } from '@/components/ui';
 import { formatPrice, productImage } from '@/lib/format';
 import { Trash2, Plus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '@/stores/cart';
+import { useAuth } from '@/stores/auth';
 import toast from 'react-hot-toast';
 
 export function ComparePage() {
+  const { user, openAuthModal } = useAuth();
   const { items, remove, clear } = useCompare();
   const { add: addToCart } = useCart();
 
@@ -23,6 +25,10 @@ export function ComparePage() {
   }
 
   const handleAddCart = async (productId: number, name: string) => {
+    if (!user) {
+      openAuthModal('login', 'Please sign in to your account to add items to your cart.');
+      return;
+    }
     const res = await addToCart(productId);
     if (res.ok) toast.success(`Added ${name} to cart`);
     else toast.error(res.message || 'Could not add to cart');

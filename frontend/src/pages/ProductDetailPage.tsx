@@ -20,6 +20,7 @@ import { formatPrice, productImage, imageUrl } from '@/lib/format';
 import { useCart } from '@/stores/cart';
 import { useWishlist } from '@/stores/wishlist';
 import { useCompare } from '@/stores/compare';
+import { useAuth } from '@/stores/auth';
 import type { Product, ProductVariant, Specification, Review } from '@/types';
 import toast from 'react-hot-toast';
 import catalogData from '@/data/catalog.json';
@@ -80,6 +81,7 @@ export function ProductDetailPage() {
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewComment, setReviewComment] = useState('');
 
+  const { user, openAuthModal } = useAuth();
   const { add: addToCart, setOpen: setCartOpen, loading: cartLoading } = useCart();
   const { toggle: toggleWishlist, has: inWishlist } = useWishlist();
   const { toggle: toggleCompare, has: inCompare } = useCompare();
@@ -278,6 +280,10 @@ export function ProductDetailPage() {
 
   const handleBuyNow = async () => {
     if (!product) return;
+    if (!user) {
+      openAuthModal('login', 'Please sign in to your account to complete your purchase.');
+      return;
+    }
     setBuyingNow(true);
     try {
       // Pass openDrawer = false so shopping cart drawer does NOT open on Buy Now
@@ -296,12 +302,26 @@ export function ProductDetailPage() {
   };
 
   const handleAddToCart = async () => {
+    if (!user) {
+      openAuthModal('login', 'Please sign in to your account to add items to your cart.');
+      return;
+    }
     const res = await addToCart(product.id, activeVariant?.id, quantity);
     if (res.ok) {
       toast.success(`Added ${product.name} to cart`);
     } else {
       toast.error(res.message || 'Could not add to cart');
     }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!product) return;
+    if (!user) {
+      openAuthModal('login', 'Please sign in to your account to save items to your wishlist.');
+      return;
+    }
+    const nowIn = await toggleWishlist(product.id);
+    toast.success(nowIn ? 'Added to wishlist' : 'Removed from wishlist');
   };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -543,10 +563,100 @@ export function ProductDetailPage() {
           )}
 
           {/* Actions: Quantity + Add to Cart + Buy Now + Wishlist + Compare */}
-          <div className="space-y-3 pt-2">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="pt-2">
+            {/* Mobile Layout (<sm): Clean 2-Tier Stack */}
+            <div className="space-y-2.5 sm:hidden">
+              {/* Tier 1: Qty Selector + Wishlist + Compare on one row */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center border border-zinc-200 rounded-md h-12 px-3 justify-between bg-zinc-50/70 shadow-2xs">
+                  <span className="text-xs font-bold text-zinc-500 select-none">Qty:</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base"
+                      aria-label="Decrease quantity"
+                    >
+                      -
+                    </button>
+                    <span className="px-2 font-bold text-sm text-zinc-950 min-w-[20px] text-center select-none">
+                      {quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(quantity + 1)}
+                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base"
+                      aria-label="Increase quantity"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleWishlistToggle}
+                  className={`flex h-12 w-12 items-center justify-center rounded-md border transition shrink-0 shadow-2xs active:scale-95 ${
+                    inWishlist(product.id)
+                      ? 'border-red-200 bg-red-50 text-red-500'
+                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50'
+                  }`}
+                  title="Save to Wishlist"
+                  aria-label="Save to Wishlist"
+                >
+                  <Heart className={`h-5 w-5 ${inWishlist(product.id) ? 'fill-current' : ''}`} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => toggleCompare(product)}
+                  className={`flex h-12 w-12 items-center justify-center rounded-md border transition shrink-0 shadow-2xs active:scale-95 ${
+                    inCompare(product.id)
+                      ? 'border-brand-200 bg-brand-50 text-brand-600'
+                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50'
+                  }`}
+                  title="Compare"
+                  aria-label="Compare"
+                >
+                  <Scale className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Tier 2: Add to Cart & Buy Now side by side */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddToCart}
+                  disabled={!inStock || cartLoading || buyingNow}
+                  size="lg"
+                  className="w-full h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900 rounded-md shadow-2xs text-sm"
+                >
+                  <ShoppingBag className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Add to Cart</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleBuyNow}
+                  disabled={!inStock || cartLoading || buyingNow}
+                  size="lg"
+                  className="w-full h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-sm transition-transform active:scale-98 rounded-md text-sm"
+                >
+                  {buyingNow ? (
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  ) : (
+                    <Zap className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />
+                  )}
+                  <span className="truncate">Buy Now</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Desktop Layout (sm:flex): Aligned single row */}
+            <div className="hidden sm:flex items-center gap-3">
               {/* Qty Selector */}
-              <div className="flex items-center border border-zinc-200 rounded-md h-12 px-3.5 w-full sm:w-auto justify-between sm:justify-start bg-zinc-50/50">
+              <div className="flex items-center border border-zinc-200 rounded-md h-12 px-3.5 bg-zinc-50/50 shrink-0">
                 <span className="text-xs font-bold text-zinc-400 mr-3">Qty:</span>
                 <button
                   type="button"
@@ -572,7 +682,7 @@ export function ProductDetailPage() {
                 onClick={handleAddToCart}
                 disabled={!inStock || cartLoading || buyingNow}
                 size="lg"
-                className="w-full sm:flex-1 h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900 rounded-md"
+                className="flex-1 h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900 rounded-md"
               >
                 <ShoppingBag className="h-4 w-4" />
                 <span>Add to Cart</span>
@@ -584,7 +694,7 @@ export function ProductDetailPage() {
                 onClick={handleBuyNow}
                 disabled={!inStock || cartLoading || buyingNow}
                 size="lg"
-                className="w-full sm:flex-1 h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-sm transition-transform active:scale-98 rounded-md"
+                className="flex-1 h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-sm transition-transform active:scale-98 rounded-md"
               >
                 {buyingNow ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -595,16 +705,17 @@ export function ProductDetailPage() {
               </Button>
 
               {/* Wishlist & Compare Buttons */}
-              <div className="flex items-center gap-2 justify-center sm:justify-start">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => toggleWishlist(product.id)}
+                  onClick={handleWishlistToggle}
                   className={`flex h-12 w-12 items-center justify-center rounded-md border transition shrink-0 ${
                     inWishlist(product.id)
                       ? 'border-red-200 bg-red-50 text-red-500'
                       : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
                   }`}
                   title="Save to Wishlist"
+                  aria-label="Save to Wishlist"
                 >
                   <Heart className={`h-5 w-5 ${inWishlist(product.id) ? 'fill-current' : ''}`} />
                 </button>
@@ -618,6 +729,7 @@ export function ProductDetailPage() {
                       : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
                   }`}
                   title="Compare"
+                  aria-label="Compare"
                 >
                   <Scale className="h-5 w-5" />
                 </button>

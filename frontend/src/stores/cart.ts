@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api, { getErrorMessage } from '@/lib/api';
 import type { Cart, CartItem } from '@/types';
+import { useAuth } from './auth';
 
 const CART_STORAGE_KEY = 'phonehub_cart_persisted';
 
@@ -105,8 +106,14 @@ export const useCart = create<CartState>((set, get) => {
         set({ cart: getInitialCart(), loading: false });
       }
     },
-    add: (productId, variantId = null, quantity = 1, openDrawer = true) =>
-      run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), openDrawer),
+    add: (productId, variantId = null, quantity = 1, openDrawer = true) => {
+      const authUser = useAuth.getState().user;
+      if (!authUser) {
+        useAuth.getState().openAuthModal('login', 'Please sign in to your account to add items to your cart.');
+        return Promise.resolve({ ok: false, message: 'Please sign in to add items to your cart.' });
+      }
+      return run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), openDrawer);
+    },
     update: (itemId, quantity) =>
       quantity <= 0 ? get().remove(itemId) : run(() => api.put(`/cart/items/${itemId}`, { quantity })),
     remove: (itemId) => run(() => api.delete(`/cart/items/${itemId}`)),
