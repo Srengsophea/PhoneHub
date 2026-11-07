@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 
 interface ColorVariantFormItem {
   id: string;
+  variant_id?: number;
   name: string;
   hex: string;
   image_url: string;
@@ -161,6 +162,7 @@ export function AdminProductsPage() {
           '';
         extractedColors.push({
           id: String(v.id || idx + 1),
+          variant_id: v.id,
           name: colorName,
           hex: v.color_hex || '#94a3b8',
           image_url: varImg,
@@ -279,6 +281,7 @@ export function AdminProductsPage() {
     try {
       // Build variants for each color
       const payloadVariants = colors.map((c, idx) => ({
+        id: c.variant_id,
         name: `${form.name} - ${c.name || 'Standard'}`,
         sku: `${form.sku}-${(c.name || 'STD').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4)}-${idx + 1}`,
         price: Number(form.base_price) || 0,

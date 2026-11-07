@@ -215,39 +215,72 @@ class AdminProductController extends Controller
             unset($updateData['image_url']);
             $product->update($updateData);
 
-            if (isset($validated['variants'])) {
-                // If existing variant IDs are passed, update or create
+            if (isset($validated['variants']) && is_array($validated['variants'])) {
+                $savedVariantIds = [];
                 foreach ($validated['variants'] as $v) {
                     $variantImg = $v['image_url'] ?? $v['image_path'] ?? null;
                     unset($v['image_url'], $v['image_path']);
                     $variant = null;
-                    if (isset($v['id']) && $v['id']) {
-                        ProductVariant::where('id', $v['id'])->where('product_id', $product->id)->update([
-                            'name' => $v['name'],
-                            'sku' => $v['sku'],
-                            'price' => $v['price'],
-                            'sale_price' => $v['sale_price'] ?? null,
-                            'stock' => $v['stock'],
-                            'color' => $v['color'] ?? null,
-                            'color_hex' => $v['color_hex'] ?? null,
-                            'storage' => $v['storage'] ?? null,
-                            'ram' => $v['ram'] ?? null,
+
+                    // 1. Try to find by explicit id if provided
+                    if (!empty($v['id'])) {
+                        $variant = ProductVariant::where('id', $v['id'])->where('product_id', $product->id)->first();
+                    }
+
+                    // 2. If not found by id, find existing variant by color & storage to avoid duplicates
+                    if (!$variant && !empty($v['color'])) {
+                        $variant = $product->variants()
+                            ->where('color', $v['color'])
+                            ->when(!empty($v['storage']), fn($q) => $q->where('storage', $v['storage']))
+                            ->first();
+                    }
+
+                    if ($variant) {
+                        $variant->update([
+                            'name' => $v['name'] ?? $variant->name,
+                            'sku' => $v['sku'] ?? $variant->sku,
+                            'price' => $v['price'] ?? $product->base_price,
+                            'sale_price' => array_key_exists('sale_price', $v) ? $v['sale_price'] : $product->sale_price,
+                            'stock' => $v['stock'] ?? $variant->stock,
+                            'color' => $v['color'] ?? $variant->color,
+                            'color_hex' => $v['color_hex'] ?? $variant->color_hex,
+                            'storage' => $v['storage'] ?? $variant->storage,
+                            'ram' => $v['ram'] ?? $variant->ram,
                         ]);
-                        $variant = ProductVariant::find($v['id']);
                     } else {
+                        if (!isset($v['price'])) {
+                            $v['price'] = $product->base_price;
+                        }
+                        if (!array_key_exists('sale_price', $v)) {
+                            $v['sale_price'] = $product->sale_price;
+                        }
                         $variant = $product->variants()->create($v);
                     }
 
-                    if ($variant && $variantImg) {
-                        $product->images()->where('variant_id', $variant->id)->delete();
-                        $product->images()->create([
-                            'variant_id' => $variant->id,
-                            'image_path' => $variantImg,
-                            'is_primary' => false,
-                            'display_order' => 1,
-                        ]);
+                    if ($variant) {
+                        $savedVariantIds[] = $variant->id;
+                        if ($variantImg) {
+                            $product->images()->where('variant_id', $variant->id)->delete();
+                            $product->images()->create([
+                                'variant_id' => $variant->id,
+                                'image_path' => $variantImg,
+                                'is_primary' => false,
+                                'display_order' => 1,
+                            ]);
+                        }
                     }
                 }
+
+                // Delete any old duplicate or unselected variants
+                if (!empty($savedVariantIds)) {
+                    $product->variants()->whereNotIn('id', $savedVariantIds)->delete();
+                }
+            } else {
+                // If variants not explicitly passed, sync existing variants with updated product prices
+                $product->variants()->update([
+                    'price' => $product->base_price,
+                    'sale_price' => $product->sale_price,
+                ]);
             }
 
             if (isset($validated['images'])) {
