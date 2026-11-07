@@ -379,13 +379,8 @@ export function ProductDetailPage() {
                               </span>
                             )}
                           </div>
-                          {variantForStorage?.ram && (
-                            <p className="text-[11px] font-medium text-zinc-500 mt-0.5">
-                              {variantForStorage.ram} RAM
-                            </p>
-                          )}
                           {variantForStorage && (
-                            <p className="text-xs font-bold text-zinc-900 mt-1.5">
+                            <p className="text-xs font-bold text-zinc-700 mt-1">
                               {formatPrice(variantForStorage.sale_price ?? variantForStorage.price)}
                             </p>
                           )}
