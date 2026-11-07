@@ -461,7 +461,7 @@ export function ProductDetailPage() {
           <div className="space-y-3 pt-2">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* Qty Selector */}
-              <div className="flex items-center border border-zinc-200 rounded-2xl h-12 px-3.5 w-full sm:w-auto justify-between sm:justify-start bg-zinc-50/50">
+              <div className="flex items-center border border-zinc-200 rounded-md h-12 px-3.5 w-full sm:w-auto justify-between sm:justify-start bg-zinc-50/50">
                 <span className="text-xs font-bold text-zinc-400 mr-3">Qty:</span>
                 <button
                   type="button"
@@ -487,7 +487,7 @@ export function ProductDetailPage() {
                 onClick={handleAddToCart}
                 disabled={!inStock || cartLoading || buyingNow}
                 size="lg"
-                className="w-full sm:flex-1 h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900"
+                className="w-full sm:flex-1 h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900 rounded-md"
               >
                 <ShoppingBag className="h-4 w-4" />
                 <span>Add to Cart</span>
@@ -499,7 +499,7 @@ export function ProductDetailPage() {
                 onClick={handleBuyNow}
                 disabled={!inStock || cartLoading || buyingNow}
                 size="lg"
-                className="w-full sm:flex-1 h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-lg transition-transform active:scale-98"
+                className="w-full sm:flex-1 h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-sm transition-transform active:scale-98 rounded-md"
               >
                 {buyingNow ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -514,7 +514,7 @@ export function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={() => toggleWishlist(product.id)}
-                  className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition shrink-0 ${
+                  className={`flex h-12 w-12 items-center justify-center rounded-md border transition shrink-0 ${
                     inWishlist(product.id)
                       ? 'border-red-200 bg-red-50 text-red-500'
                       : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
@@ -527,7 +527,7 @@ export function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={() => toggleCompare(product)}
-                  className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition shrink-0 ${
+                  className={`flex h-12 w-12 items-center justify-center rounded-md border transition shrink-0 ${
                     inCompare(product.id)
                       ? 'border-brand-200 bg-brand-50 text-brand-600'
                       : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
@@ -541,7 +541,7 @@ export function ProductDetailPage() {
           </div>
 
           {/* Warranty & Guarantees */}
-          <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-4 space-y-2.5 text-xs text-zinc-600">
+          <div className="rounded-md border border-zinc-200/80 bg-zinc-50/70 p-4 space-y-2.5 text-xs text-zinc-600">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
               <span>{product.warranty_info || '1-Year Official Manufacturer Warranty Included'}</span>

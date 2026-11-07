@@ -20,12 +20,12 @@ const variants: Record<Variant, string> = {
   danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
 };
 const sizes: Record<Size, string> = {
-  xs: 'h-7 px-2.5 text-xs rounded-lg gap-1',
-  sm: 'h-9 px-3.5 text-sm rounded-xl gap-1.5',
-  md: 'h-10 px-4 text-sm rounded-xl gap-2',
-  lg: 'h-12 px-6 text-[15px] rounded-2xl gap-2',
-  icon: 'h-10 w-10 rounded-xl',
-  'icon-sm': 'h-8 w-8 rounded-lg',
+  xs: 'h-7 px-2.5 text-xs rounded-md gap-1',
+  sm: 'h-9 px-3.5 text-sm rounded-md gap-1.5',
+  md: 'h-10 px-4 text-sm rounded-md gap-2',
+  lg: 'h-12 px-6 text-[15px] rounded-md gap-2',
+  icon: 'h-10 w-10 rounded-md',
+  'icon-sm': 'h-8 w-8 rounded-md',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
