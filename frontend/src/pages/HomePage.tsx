@@ -138,44 +138,44 @@ export function HomePage() {
                 </span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-zinc-950 leading-[1.1]">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-zinc-950 leading-[1.15]">
                 Engineered for speed. <br className="hidden sm:inline" />
                 <span>
                   Crafted for <span className="text-red-600">prestige.</span>
                 </span>
               </h1>
 
-              <p className="text-base sm:text-lg text-zinc-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+              <p className="text-sm sm:text-base lg:text-lg text-zinc-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
                 Discover next-generation titanium designs, cinema-grade camera systems, and all-day battery efficiency from Apple, Samsung, Google, and more.
               </p>
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-1">
-                <Link to="/products">
-                  <Button size="lg" className="bg-zinc-950 text-white hover:bg-zinc-800 font-bold px-8 shadow-sm gap-2 rounded-md">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 pt-1 w-full max-w-sm sm:max-w-none mx-auto lg:mx-0">
+                <Link to="/products" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto bg-zinc-950 text-white hover:bg-zinc-800 font-bold px-8 shadow-sm gap-2 rounded-md justify-center">
                     Explore Collection
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <Link to="/brands">
-                  <Button variant="outline" size="lg" className="border-zinc-200 text-zinc-900 hover:bg-zinc-50 font-bold rounded-md px-8">
+                <Link to="/brands" className="w-full sm:w-auto">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto border-zinc-200 text-zinc-900 hover:bg-zinc-50 font-bold rounded-md px-8 justify-center">
                     Browse Brands
                   </Button>
                 </Link>
               </div>
 
               {/* Trust Specs row */}
-              <div className="grid grid-cols-3 gap-6 pt-7 border-t border-zinc-100 max-w-lg mx-auto lg:mx-0 text-left">
+              <div className="grid grid-cols-3 gap-2 sm:gap-6 pt-6 sm:pt-7 border-t border-zinc-100 max-w-lg mx-auto lg:mx-0 text-center sm:text-left">
                 <div>
-                  <p className="text-2xl font-black text-zinc-950">100%</p>
-                  <p className="text-xs text-zinc-500 font-medium mt-0.5">Sealed & Genuine</p>
+                  <p className="text-xl sm:text-2xl font-black text-zinc-950">100%</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-500 font-medium mt-0.5 truncate">Sealed & Genuine</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-zinc-950">1-Year</p>
-                  <p className="text-xs text-zinc-500 font-medium mt-0.5">Official Warranty</p>
+                  <p className="text-xl sm:text-2xl font-black text-zinc-950">1-Year</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-500 font-medium mt-0.5 truncate">Official Warranty</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-zinc-950">Free</p>
-                  <p className="text-xs text-zinc-500 font-medium mt-0.5">Orders Over $500</p>
+                  <p className="text-xl sm:text-2xl font-black text-zinc-950">Free</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-500 font-medium mt-0.5 truncate">Delivery &gt; $500</p>
                 </div>
               </div>
             </div>
@@ -256,7 +256,7 @@ export function HomePage() {
                   className="animate-hero-glide flex flex-col items-center w-full"
                 >
                   {/* Phone Image (Large, Clean Transparent PNG - Zero Boxes, Zero Borders) */}
-                  <div className="relative w-full h-[380px] sm:h-[420px] flex items-center justify-center">
+                  <div className="relative w-full h-[320px] sm:h-[420px] flex items-center justify-center">
                     <img
                       src={spotlightDevices[activeSpotlight].image}
                       alt={spotlightDevices[activeSpotlight].name}
