@@ -18,9 +18,12 @@ sudo apt install -y software-properties-common curl git unzip nginx sqlite3
 sudo add-apt-repository -y ppa:ondrej/php
 sudo apt update -y
 
-# 3. Install PHP 8.2 and required extensions
-sudo apt install -y php8.2 php8.2-fpm php8.2-cli php8.2-common php8.2-mysql \
-  php8.2-sqlite3 php8.2-zip php8.2-gd php8.2-mbstring php8.2-curl php8.2-xml php8.2-bcmath
+# 3. Install PHP 8.3 and required extensions
+sudo apt install -y php8.3 php8.3-fpm php8.3-cli php8.3-common php8.3-mysql \
+  php8.3-sqlite3 php8.3-zip php8.3-gd php8.3-mbstring php8.3-curl php8.3-xml php8.3-bcmath
+
+# Set PHP 8.3 as default CLI
+sudo update-alternatives --set php /usr/bin/php8.3
 
 # 4. Install Composer globally
 if ! command -v composer &> /dev/null; then
@@ -114,7 +117,7 @@ server {
     error_page 404 /index.php;
 
     location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;
@@ -132,12 +135,13 @@ sudo rm -f /etc/nginx/sites-enabled/default
 
 # Test and Restart Services
 sudo nginx -t
-sudo systemctl restart php8.2-fpm
+sudo systemctl restart php8.3-fpm
 sudo systemctl restart nginx
-sudo systemctl enable nginx php8.2-fpm
+sudo systemctl enable nginx php8.3-fpm
 
 echo "========================================================"
 echo "✅ PhoneHub Backend is now LIVE on AWS EC2!"
 echo "📍 API Base URL: http://54.151.151.35/api/v1"
 echo "🔍 Health Check: http://54.151.151.35/api/v1/products"
 echo "========================================================"
+
