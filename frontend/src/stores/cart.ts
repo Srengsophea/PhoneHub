@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import api, { getErrorMessage } from '@/lib/api';
 import type { Cart, CartItem } from '@/types';
 
+const CART_STORAGE_KEY = 'phonehub_cart_persisted';
+
 const emptyCart: Cart = {
   items: [],
   subtotal: 0,
@@ -11,6 +13,19 @@ const emptyCart: Cart = {
   total_amount: 0,
   coupon: null,
 };
+
+function getInitialCart(): Cart {
+  try {
+    const saved = localStorage.getItem(CART_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+        return { ...emptyCart, ...parsed };
+      }
+    }
+  } catch {}
+  return emptyCart;
+}
 
 export interface CartResult {
   ok: boolean;
@@ -34,11 +49,19 @@ interface CartState {
 }
 
 export const useCart = create<CartState>((set, get) => {
+  const save = (cartData: Cart) => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
+    } catch {}
+  };
+
   const run = async (fn: () => Promise<{ data: { data: Cart } }>, openAfter = false): Promise<CartResult> => {
     set({ loading: true });
     try {
       const res = await fn();
-      set({ cart: { ...emptyCart, ...res.data.data }, loading: false, ...(openAfter ? { open: true } : {}) });
+      const updated = { ...emptyCart, ...res.data.data };
+      save(updated);
+      set({ cart: updated, loading: false, ...(openAfter ? { open: true } : {}) });
       return { ok: true };
     } catch (err) {
       set({ loading: false });
@@ -47,13 +70,40 @@ export const useCart = create<CartState>((set, get) => {
   };
 
   return {
-    cart: emptyCart,
+    cart: getInitialCart(),
     loading: false,
     open: false,
     setOpen: (open) => set({ open }),
     count: () => get().cart.items.reduce((n: number, i: CartItem) => n + i.quantity, 0),
     fetch: async () => {
-      await run(() => api.get('/cart'));
+      try {
+        const res = await api.get('/cart');
+        const incoming = res.data?.data;
+        if (incoming && Array.isArray(incoming.items) && incoming.items.length > 0) {
+          const updated = { ...emptyCart, ...incoming };
+          save(updated);
+          set({ cart: updated, loading: false });
+        } else {
+          // If server cart is empty but we have local items, keep local and sync to backend
+          const local = getInitialCart();
+          if (local.items.length > 0) {
+            set({ cart: local, loading: false });
+            for (const item of local.items) {
+              try {
+                await api.post('/cart/items', {
+                  product_id: item.product_id,
+                  variant_id: item.variant_id || null,
+                  quantity: item.quantity,
+                });
+              } catch {}
+            }
+          } else {
+            set({ cart: emptyCart, loading: false });
+          }
+        }
+      } catch (err) {
+        set({ cart: getInitialCart(), loading: false });
+      }
     },
     add: (productId, variantId = null, quantity = 1) =>
       run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), true),
@@ -64,6 +114,9 @@ export const useCart = create<CartState>((set, get) => {
       try {
         await api.delete('/cart');
       } finally {
+        try {
+          localStorage.removeItem(CART_STORAGE_KEY);
+        } catch {}
         set({ cart: emptyCart });
       }
     },
@@ -72,7 +125,9 @@ export const useCart = create<CartState>((set, get) => {
       try {
         const res = await api.post('/cart/coupon', { code });
         const payload = res.data.data?.cart ?? res.data.data;
-        set({ cart: { ...emptyCart, ...payload }, loading: false });
+        const updated = { ...emptyCart, ...payload };
+        save(updated);
+        set({ cart: updated, loading: false });
         return { ok: true };
       } catch (err) {
         set({ loading: false });
@@ -80,6 +135,11 @@ export const useCart = create<CartState>((set, get) => {
       }
     },
     removeCoupon: () => run(() => api.delete('/cart/coupon')),
-    reset: () => set({ cart: emptyCart }),
+    reset: () => {
+      try {
+        localStorage.removeItem(CART_STORAGE_KEY);
+      } catch {}
+      set({ cart: emptyCart });
+    },
   };
 });

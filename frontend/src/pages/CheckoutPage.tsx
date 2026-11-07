@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 export function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, clear: clearCart } = useCart();
-  const { user, openAuthModal } = useAuth();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'khqr' | 'cod' | 'stripe'>('khqr');
@@ -37,8 +37,12 @@ export function CheckoutPage() {
   });
 
   useEffect(() => {
-    if (!user) {
-      openAuthModal('login', 'Please sign in to proceed with checkout.');
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        full_name: prev.full_name || user.name || '',
+        phone: prev.phone || user.phone || '',
+      }));
     }
   }, [user]);
 
