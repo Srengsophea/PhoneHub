@@ -67,6 +67,8 @@ export function ProductDetailPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedStorage, setSelectedStorage] = useState<string>('');
+  const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -94,8 +96,11 @@ export function ProductDetailPage() {
         }
         if (p) {
           setProduct(p);
-          if (p.variants && p.variants.length > 0) {
-            setSelectedVariant(p.variants[0]);
+          const firstVar = p.variants?.[0];
+          if (firstVar) {
+            setSelectedVariant(firstVar);
+            setSelectedStorage(firstVar.storage || '');
+            setSelectedColor(firstVar.color || '');
           }
           setSelectedImage(productImage(p));
         }
@@ -104,8 +109,11 @@ export function ProductDetailPage() {
         const fallback = (catalogData.products as unknown as Product[]).find((it) => it.slug === slug);
         if (fallback) {
           setProduct(fallback);
-          if (fallback.variants && fallback.variants.length > 0) {
-            setSelectedVariant(fallback.variants[0]);
+          const firstVar = fallback.variants?.[0];
+          if (firstVar) {
+            setSelectedVariant(firstVar);
+            setSelectedStorage(firstVar.storage || '');
+            setSelectedColor(firstVar.color || '');
           }
           setSelectedImage(productImage(fallback));
         }
@@ -136,16 +144,6 @@ export function ProductDetailPage() {
     );
   }
 
-  const currentPrice = selectedVariant
-    ? selectedVariant.sale_price ?? selectedVariant.price
-    : product.sale_price ?? product.base_price;
-
-  const originalPrice = selectedVariant
-    ? selectedVariant.sale_price ? selectedVariant.price : null
-    : product.sale_price ? product.base_price : null;
-
-  const inStock = selectedVariant ? selectedVariant.stock > 0 : true;
-
   // Extract separate unique storage capacities and colors
   const storages = Array.from(
     new Set((product.variants || []).map((v) => v.storage).filter(Boolean))
@@ -162,33 +160,49 @@ export function ProductDetailPage() {
     return acc;
   }, [] as { name: string; hex: string }[]);
 
+  // Find exact matching variant for the currently selected storage and color
+  const activeVariant =
+    product.variants?.find(
+      (v) =>
+        v.storage === (selectedStorage || storages[0]) &&
+        v.color?.toLowerCase() === (selectedColor || colors[0]?.name || '').toLowerCase()
+    ) ||
+    product.variants?.find((v) => v.storage === (selectedStorage || storages[0])) ||
+    selectedVariant ||
+    product.variants?.[0];
+
+  const currentPrice =
+    activeVariant?.sale_price ?? activeVariant?.price ?? product.sale_price ?? product.base_price;
+
+  const originalPrice = activeVariant?.sale_price
+    ? activeVariant.price
+    : product.sale_price
+    ? product.base_price
+    : null;
+
+  const inStock = activeVariant ? activeVariant.stock > 0 : true;
+
   const handleStorageSelect = (storage: string) => {
-    if (!product?.variants) return;
-    const currentColor = selectedVariant?.color;
-    // Prefer variant matching both current color and new storage
-    let target = product.variants.find(
-      (v) => v.storage === storage && v.color?.toLowerCase() === currentColor?.toLowerCase()
-    );
-    if (!target) {
-      target = product.variants.find((v) => v.storage === storage);
-    }
-    if (target) {
-      setSelectedVariant(target);
+    setSelectedStorage(storage);
+    if (product.variants) {
+      const currentColor = selectedColor || product.variants[0]?.color || '';
+      const match =
+        product.variants.find(
+          (v) => v.storage === storage && v.color?.toLowerCase() === currentColor.toLowerCase()
+        ) || product.variants.find((v) => v.storage === storage);
+      if (match) setSelectedVariant(match);
     }
   };
 
   const handleColorSelect = (colorName: string) => {
-    if (!product?.variants) return;
-    const currentStorage = selectedVariant?.storage;
-    // Prefer variant matching both current storage and new color
-    let target = product.variants.find(
-      (v) => v.color?.toLowerCase() === colorName.toLowerCase() && v.storage === currentStorage
-    );
-    if (!target) {
-      target = product.variants.find((v) => v.color?.toLowerCase() === colorName.toLowerCase());
-    }
-    if (target) {
-      setSelectedVariant(target);
+    setSelectedColor(colorName);
+    if (product.variants) {
+      const currentStorage = selectedStorage || product.variants[0]?.storage || '';
+      const match =
+        product.variants.find(
+          (v) => v.color?.toLowerCase() === colorName.toLowerCase() && v.storage === currentStorage
+        ) || product.variants.find((v) => v.color?.toLowerCase() === colorName.toLowerCase());
+      if (match) setSelectedVariant(match);
     }
   };
 
@@ -196,7 +210,7 @@ export function ProductDetailPage() {
     if (!product) return;
     setBuyingNow(true);
     try {
-      const res = await addToCart(product.id, selectedVariant?.id, quantity);
+      const res = await addToCart(product.id, activeVariant?.id, quantity);
       if (res.ok) {
         navigate('/checkout');
       } else {
@@ -210,7 +224,7 @@ export function ProductDetailPage() {
   };
 
   const handleAddToCart = async () => {
-    const res = await addToCart(product.id, selectedVariant?.id, quantity);
+    const res = await addToCart(product.id, activeVariant?.id, quantity);
     if (res.ok) {
       toast.success(`Added ${product.name} to cart`);
     } else {
@@ -352,15 +366,20 @@ export function ProductDetailPage() {
                   <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-zinc-900">
                     <span>Space (Storage & RAM):</span>
                     <span className="text-zinc-600 font-semibold normal-case tracking-normal">
-                      {selectedVariant?.storage}
-                      {selectedVariant?.ram ? ` / ${selectedVariant.ram}` : ''}
+                      {selectedStorage || product.variants?.[0]?.storage}
+                      {activeVariant?.ram ? ` / ${activeVariant.ram}` : ''}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {storages.map((storage) => {
-                      const isSelected = selectedVariant?.storage === storage;
-                      const variantForStorage = product.variants?.find((v) => v.storage === storage);
+                      const isSelected = (selectedStorage || product.variants?.[0]?.storage) === storage;
+                      const variantForStorage =
+                        product.variants?.find(
+                          (v) =>
+                            v.storage === storage &&
+                            v.color?.toLowerCase() === (selectedColor || product.variants?.[0]?.color || '').toLowerCase()
+                        ) || product.variants?.find((v) => v.storage === storage);
                       return (
                         <button
                           key={storage}
@@ -400,14 +419,15 @@ export function ProductDetailPage() {
                   <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-zinc-900">
                     <span>Color:</span>
                     <span className="text-zinc-600 font-semibold normal-case tracking-normal">
-                      {selectedVariant?.color || colors[0]?.name}
+                      {selectedColor || product.variants?.[0]?.color || colors[0]?.name}
                     </span>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     {colors.map((c) => {
                       const isSelected =
-                        selectedVariant?.color?.toLowerCase() === c.name.toLowerCase();
+                        (selectedColor || product.variants?.[0]?.color || colors[0]?.name).toLowerCase() ===
+                        c.name.toLowerCase();
                       return (
                         <button
                           key={c.name}
