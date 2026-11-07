@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Truck, ArrowRight, CreditCard, Banknote, QrCode } from 'lucide-react';
+import { ShieldCheck, Truck, ArrowRight, CreditCard, Banknote, QrCode, MapPin } from 'lucide-react';
 import { useCart } from '@/stores/cart';
 import { useAuth } from '@/stores/auth';
 import { Button, Input } from '@/components/ui';
@@ -9,6 +9,8 @@ import api, { getErrorMessage } from '@/lib/api';
 import { KHQRModal } from '@/components/KHQRModal';
 import { generateKHQR, type GeneratedKHQR, BAKONG_ACCOUNT_ID, MERCHANT_NAME } from '@/lib/khqr';
 import { saveLocalOrder, updateLocalOrderStatus } from '@/lib/orders';
+import { getLocalAddresses } from '@/lib/addresses';
+import type { Address } from '@/types';
 import toast from 'react-hot-toast';
 
 export function CheckoutPage() {
@@ -29,20 +31,35 @@ export function CheckoutPage() {
   const [pendingOrder, setPendingOrder] = useState<any | null>(null);
   const { applyCoupon, removeCoupon } = useCart();
 
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+
   const [formData, setFormData] = useState({
     full_name: user?.name || '',
     phone: user?.phone || '',
     address_line_1: '',
     address_line_2: '',
-    city: '',
-    province: '',
+    city: 'Phnom Penh',
+    province: 'Phnom Penh',
     postal_code: '',
     country: 'Cambodia',
     customer_notes: '',
   });
 
   useEffect(() => {
-    if (user) {
+    const list = getLocalAddresses();
+    setSavedAddresses(list);
+    const defaultAddr = list.find((a) => a.is_default) || list[0];
+    if (defaultAddr) {
+      setFormData((prev) => ({
+        ...prev,
+        full_name: defaultAddr.full_name || prev.full_name,
+        phone: defaultAddr.phone || prev.phone,
+        address_line_1: defaultAddr.address_line_1 || prev.address_line_1,
+        address_line_2: defaultAddr.address_line_2 || prev.address_line_2,
+        city: defaultAddr.city || prev.city,
+        province: defaultAddr.province || prev.province,
+      }));
+    } else if (user) {
       setFormData((prev) => ({
         ...prev,
         full_name: prev.full_name || user.name || '',
@@ -149,11 +166,50 @@ export function CheckoutPage() {
         {/* Shipping and Payment Forms */}
         <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-8">
           {/* Shipping Details */}
-          <div className="rounded-3xl border border-zinc-200/80 p-6 space-y-4 bg-white">
-            <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-              <Truck className="h-5 w-5 text-brand-600" />
-              1. Delivery Address
-            </h2>
+          <div className="rounded-md border border-zinc-200/90 p-6 space-y-4 bg-white shadow-2xs">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-zinc-950 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-zinc-900" />
+                1. Delivery Address
+              </h2>
+              {user && (
+                <Link to="/profile" className="text-xs font-bold text-brand-600 hover:underline">
+                  Manage Addresses
+                </Link>
+              )}
+            </div>
+
+            {/* Quick Pick from Saved Addresses */}
+            {savedAddresses.length > 0 && (
+              <div className="space-y-1.5 pb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  Select From Saved Addresses:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {savedAddresses.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          full_name: a.full_name,
+                          phone: a.phone,
+                          address_line_1: a.address_line_1,
+                          address_line_2: a.address_line_2 || '',
+                          city: a.city || 'Phnom Penh',
+                          province: a.province || 'Phnom Penh',
+                        }));
+                        toast.success(`Loaded ${a.full_name}'s address`);
+                      }}
+                      className="px-3 py-1.5 rounded-md text-xs font-bold border border-zinc-200 hover:border-zinc-950 bg-zinc-50 hover:bg-white transition text-zinc-800"
+                    >
+                      {a.full_name} ({a.address_line_1.slice(0, 18)}...) {a.is_default ? '★' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
@@ -205,13 +261,13 @@ export function CheckoutPage() {
           </div>
 
           {/* Payment Method */}
-          <div className="rounded-3xl border border-zinc-200/80 p-6 space-y-4 bg-white">
-            <h2 className="text-lg font-bold text-zinc-900 flex items-center justify-between">
+          <div className="rounded-md border border-zinc-200/90 p-6 space-y-4 bg-white shadow-2xs">
+            <h2 className="text-lg font-bold text-zinc-950 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-brand-600" />
+                <CreditCard className="h-5 w-5 text-zinc-900" />
                 2. Payment Method
               </span>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-[#D32F2F]">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-sm bg-red-50 text-red-600 border border-red-200">
                 Bakong KHQR Active
               </span>
             </h2>
@@ -220,20 +276,20 @@ export function CheckoutPage() {
               {/* Bakong KHQR */}
               <div
                 onClick={() => setPaymentMethod('khqr')}
-                className={`p-4 rounded-2xl border cursor-pointer transition relative overflow-hidden ${
+                className={`p-4 rounded-md border cursor-pointer transition relative overflow-hidden ${
                   paymentMethod === 'khqr'
-                    ? 'border-[#D32F2F] bg-red-50/50 shadow-sm'
+                    ? 'border-2 border-red-600 bg-red-50/40 shadow-xs'
                     : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black px-1.5 py-0.5 rounded bg-[#D32F2F] text-white">
+                    <span className="text-xs font-black px-1.5 py-0.5 rounded bg-red-600 text-white">
                       KHQR
                     </span>
                     <span className="text-[11px] font-bold text-zinc-700">Bakong</span>
                   </div>
-                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-sm">
                     Instant
                   </span>
                 </div>
@@ -245,9 +301,9 @@ export function CheckoutPage() {
               {/* Cash on Delivery */}
               <div
                 onClick={() => setPaymentMethod('cod')}
-                className={`p-4 rounded-2xl border cursor-pointer transition ${
+                className={`p-4 rounded-md border cursor-pointer transition ${
                   paymentMethod === 'cod'
-                    ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm'
+                    ? 'border-2 border-zinc-950 bg-zinc-950 text-white shadow-xs'
                     : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
                 }`}
               >
@@ -264,9 +320,9 @@ export function CheckoutPage() {
               {/* Credit Card */}
               <div
                 onClick={() => setPaymentMethod('stripe')}
-                className={`p-4 rounded-2xl border cursor-pointer transition ${
+                className={`p-4 rounded-md border cursor-pointer transition ${
                   paymentMethod === 'stripe'
-                    ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm'
+                    ? 'border-2 border-zinc-950 bg-zinc-950 text-white shadow-xs'
                     : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
                 }`}
               >
@@ -282,14 +338,14 @@ export function CheckoutPage() {
             </div>
           </div>
 
-          <Button type="submit" loading={loading} size="lg" className="w-full text-base bg-zinc-950 hover:bg-zinc-800">
+          <Button type="submit" loading={loading} size="lg" className="w-full text-base bg-zinc-950 hover:bg-zinc-800 rounded-md font-bold">
             {paymentMethod === 'khqr' ? 'Proceed to KHQR Payment' : 'Complete Order'} ({formatPrice(cart.total_amount)})
           </Button>
         </form>
 
         {/* Order Summary Box */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="rounded-3xl border border-zinc-200/80 bg-zinc-50/70 p-6 space-y-6">
+          <div className="rounded-md border border-zinc-200/90 bg-zinc-50/70 p-6 space-y-6 shadow-2xs">
             <h3 className="text-lg font-bold text-zinc-900">Order Summary</h3>
 
             {/* Cart Items List */}
