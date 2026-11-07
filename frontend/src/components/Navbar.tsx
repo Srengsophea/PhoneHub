@@ -55,12 +55,14 @@ export function Navbar() {
         <div className="container-page flex h-16 items-center justify-between gap-4">
           {/* Logo & Brand */}
           <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-sm">
-                <span className="font-bold tracking-tight text-lg">P</span>
-              </div>
-              <span className="font-bold text-lg tracking-tight text-zinc-900">
-                Phone<span className="text-brand-600">Hub</span>
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <img
+                src="/phonehub_logo.png"
+                alt="PhoneHub"
+                className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+              />
+              <span className="font-bold text-lg tracking-tight text-zinc-950">
+                Phone<span className="text-red-600">Hub</span>
               </span>
             </Link>
 

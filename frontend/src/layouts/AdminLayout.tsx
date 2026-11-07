@@ -45,12 +45,14 @@ export function AdminLayout() {
         <div>
           {/* Brand header */}
           <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-900 text-white font-bold text-sm">
-                P
-              </div>
-              <span className="font-bold text-base tracking-tight text-zinc-900">
-                Phone<span className="text-brand-600">Hub</span>
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <img
+                src="/phonehub_logo.png"
+                alt="PhoneHub"
+                className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
+              />
+              <span className="font-bold text-base tracking-tight text-zinc-950">
+                Phone<span className="text-red-600">Hub</span>
                 <span className="ml-1.5 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-600">
                   ADMIN
                 </span>

@@ -49,12 +49,14 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand info */}
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-900 text-white font-bold text-sm">
-                P
-              </div>
-              <span className="font-bold text-lg tracking-tight text-zinc-900">
-                Phone<span className="text-brand-600">Hub</span>
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <img
+                src="/phonehub_logo.png"
+                alt="PhoneHub"
+                className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
+              />
+              <span className="font-bold text-lg tracking-tight text-zinc-950">
+                Phone<span className="text-red-600">Hub</span>
               </span>
             </Link>
             <p className="mt-3 text-sm text-zinc-500 max-w-sm leading-relaxed">
