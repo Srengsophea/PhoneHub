@@ -193,10 +193,47 @@ export async function generateKHQR(
   const now = Date.now();
   const expiresAt = now + 15 * 60 * 1000;
   const safeBillNumber = (billNumber || 'PH-2026-000001').slice(-25);
-
   const activeAmount = preferredCurrency === 'KHR' ? roundedKhr : roundedUsd;
 
-  // 1. Generate standard EMVCo KHQR string
+  // 1. Generate via Lorndavid Bakong Gateway (registers MD5 for instant settlement tracking)
+  try {
+    const res = await fetch('https://lorndavid.online/api/v1/khqr/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accountId: BAKONG_ACCOUNT_ID,
+        merchantName: MERCHANT_NAME,
+        amount: activeAmount,
+        currency: preferredCurrency,
+        billNumber: safeBillNumber,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.qrString || data.qr) && data.md5) {
+        const qrStr = data.qrString || data.qr;
+        return {
+          qrString: qrStr,
+          qrImageDataUrl: data.qrImage || `https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=8&data=${encodeURIComponent(qrStr)}`,
+          md5: data.md5,
+          amountUsd: roundedUsd,
+          amountKhr: roundedKhr,
+          currency: preferredCurrency,
+          displayAmount: preferredCurrency === 'KHR' ? `${roundedKhr.toLocaleString()} KHR` : `$${roundedUsd.toFixed(2)}`,
+          billNumber: safeBillNumber,
+          merchantName: MERCHANT_NAME,
+          bakongId: BAKONG_ACCOUNT_ID,
+          expiresAt: data.expirationTimestamp || expiresAt,
+          deeplink: data.deeplink || `https://link.payway.com.kh/khqr?data=${encodeURIComponent(qrStr)}`,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Lorndavid gateway unreachable, falling back to local EMVCo generator:', err);
+  }
+
+  // 2. Local fallback standard EMVCo KHQR generator
   const qrString = buildKHQRString({
     bakongId: BAKONG_ACCOUNT_ID,
     merchantName: MERCHANT_NAME,

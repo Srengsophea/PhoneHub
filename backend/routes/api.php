@@ -51,6 +51,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/orders/track/{orderNumber}', [OrderController::class, 'track']);
     Route::post('/orders/{orderNumber}/verify-payment', [OrderController::class, 'verifyPayment']);
     Route::post('/orders/track/{orderNumber}/verify', [OrderController::class, 'verifyPayment']);
+    Route::post('/orders/{orderNumber}/khqr', [OrderController::class, 'generateKhqr']);
 
     // Cart Operations (Supports Guest Session + Authenticated)
     Route::prefix('cart')->group(function () {

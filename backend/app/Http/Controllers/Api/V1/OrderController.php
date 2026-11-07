@@ -105,12 +105,33 @@ class OrderController extends Controller
         }
 
         $md5 = $request->input('md5');
+        if (!$md5) {
+            $payment = $order->payments()->latest()->first();
+            $md5 = $payment?->payload['md5'] ?? null;
+        }
+
         $bakongToken = env('BAKONG_API_TOKEN');
         $isPaid = false;
         $txData = null;
 
-        // 1. If Bakong API Token is configured in .env and MD5 is sent, query Bakong Open API
-        if ($bakongToken && $md5) {
+        // 1. Primary settlement check: Lorndavid Bakong Gateway (https://lorndavid.online/docs)
+        if ($md5) {
+            try {
+                $response = Http::timeout(5)->get("https://lorndavid.online/api/v1/check/{$md5}");
+                if ($response->successful()) {
+                    $json = $response->json();
+                    if (($json['responseCode'] ?? 1) === 0 && !empty($json['data'])) {
+                        $isPaid = true;
+                        $txData = $json['data'];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Gateway network timeout handling
+            }
+        }
+
+        // 2. Secondary fallback: Direct NBC Bakong Open API (if BAKONG_API_TOKEN is set)
+        if (!$isPaid && $bakongToken && $md5) {
             try {
                 $response = Http::withToken($bakongToken)
                     ->timeout(4)
@@ -130,7 +151,7 @@ class OrderController extends Controller
             }
         }
 
-        // ONLY approve if NBC Bakong Open API genuinely verified the transaction
+        // ONLY approve if Bakong network genuinely confirmed the transaction
         if ($isPaid) {
             $order->update([
                 'payment_status' => 'paid',
@@ -164,17 +185,16 @@ class OrderController extends Controller
                 ]);
             }
 
-            if (!$order->statusHistories()->where('status', 'confirmed')->exists()) {
-                $order->statusHistories()->create([
-                    'status' => 'confirmed',
-                    'notes' => 'Payment verified via NBC Bakong Open API.',
-                ]);
-            }
+            $payer = $txData['fromAccountId'] ?? 'Customer';
+            $order->statusHistories()->create([
+                'status' => 'confirmed',
+                'notes' => "Payment verified via Bakong KHQR network (Payer: {$payer}).",
+            ]);
 
             return response()->json([
                 'success' => true,
                 'paid' => true,
-                'message' => 'Payment verified successfully! Your order has been confirmed.',
+                'message' => 'Payment confirmed on Bakong network! Your order has been confirmed.',
                 'data' => $order->fresh(['items.product.primaryImage', 'statusHistories', 'payments']),
             ]);
         }
@@ -186,5 +206,59 @@ class OrderController extends Controller
             'message' => 'Payment has not been received yet. Please complete the bank transfer.',
             'data' => $order,
         ]);
+    }
+
+    public function generateKhqr(Request $request, string $orderNumber): JsonResponse
+    {
+        $order = Order::where('order_number', $orderNumber)->first();
+        if (!$order && is_numeric($orderNumber)) {
+            $order = Order::where('id', (int)$orderNumber)->first();
+        }
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => "Order #{$orderNumber} was not found.",
+            ], 404);
+        }
+
+        $currency = $request->input('currency', 'USD');
+        $amount = $currency === 'KHR'
+            ? round($order->total_amount * 4100)
+            : round((float)$order->total_amount, 2);
+
+        try {
+            $response = Http::timeout(6)->post('https://lorndavid.online/api/v1/khqr/generate', [
+                'accountId' => 'sophea_sreng2@bkrt',
+                'merchantName' => 'PhoneHub',
+                'amount' => $amount,
+                'currency' => $currency,
+                'billNumber' => $order->order_number,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                $payment = $order->payments()->latest()->first();
+                if ($payment) {
+                    $payload = $payment->payload ?? [];
+                    $payload['md5'] = $data['md5'] ?? null;
+                    $payload['qr_string'] = $data['qrString'] ?? $data['qr'] ?? null;
+                    $payment->update(['payload' => $payload]);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $data,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Ignore
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Unable to generate KHQR from gateway.',
+        ], 500);
     }
 }

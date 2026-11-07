@@ -72,8 +72,8 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
       }
     };
 
-    const initialTimer = setTimeout(poll, 4000);
-    const interval = setInterval(poll, 4000);
+    const initialTimer = setTimeout(poll, 2500);
+    const interval = setInterval(poll, 3000);
 
     return () => {
       isSubscribed = false;
