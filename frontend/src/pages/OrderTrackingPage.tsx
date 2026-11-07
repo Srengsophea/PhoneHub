@@ -5,6 +5,7 @@ import {
   Package,
   Clock,
   CheckCircle,
+  Check,
   Truck,
   MapPin,
   AlertCircle,
@@ -125,19 +126,24 @@ export function OrderTrackingPage() {
     toast.success(`Copied ${num} to clipboard`);
   };
 
-  const statusSteps = [
-    { key: 'pending', label: 'Order Placed' },
-    { key: 'processing', label: 'Processing' },
-    { key: 'shipped', label: 'In Transit' },
-    { key: 'delivered', label: 'Delivered' },
-  ];
+  const getStepLevel = (status?: string, paymentStatus?: string): number => {
+    const s = (status || '').toLowerCase().trim();
+    const p = (paymentStatus || '').toLowerCase().trim();
 
-  const getStepStatus = (stepKey: string, currentStatus?: string) => {
-    const orderIndex = statusSteps.findIndex((s) => s.key === currentStatus);
-    const thisIndex = statusSteps.findIndex((s) => s.key === stepKey);
-    if (thisIndex <= orderIndex) return 'completed';
-    return 'upcoming';
+    if (s === 'delivered') return 4;
+    if (s === 'shipped' || s === 'out_for_delivery') return 3;
+    if (s === 'processing' || s === 'packed') return 2;
+    if (s === 'confirmed' || p === 'paid') return 2;
+    if (s === 'pending') return 1;
+    return 1;
   };
+
+  const statusSteps = [
+    { step: 1, label: 'Order Placed', desc: 'Order received' },
+    { step: 2, label: 'Confirmed & Prepping', desc: 'Payment verified' },
+    { step: 3, label: 'In Transit', desc: 'On the way' },
+    { step: 4, label: 'Delivered', desc: 'Completed' },
+  ];
 
   return (
     <div className="container-page py-12 max-w-4xl space-y-10">
@@ -233,33 +239,120 @@ export function OrderTrackingPage() {
           </div>
 
           {/* Stepper Progress */}
-          <div className="py-4">
-            <div className="grid grid-cols-4 gap-2 text-center">
-              {statusSteps.map((s, idx) => {
-                const st = getStepStatus(s.key, order.status);
-                return (
-                  <div key={s.key} className="flex flex-col items-center">
+          <div className="py-6 px-2 sm:px-4">
+            {(() => {
+              const currentLevel = getStepLevel(order.status, order.payment_status);
+              return (
+                <div className="relative">
+                  {/* Progress Line Track Connecting Circles */}
+                  <div className="absolute top-5 left-[12.5%] right-[12.5%] h-1 -translate-y-1/2 bg-zinc-200 rounded-full overflow-hidden">
                     <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold transition shadow-2xs ${
-                        st === 'completed'
-                          ? 'bg-zinc-950 text-white'
-                          : 'bg-zinc-100 text-zinc-400 border border-zinc-200'
-                      }`}
-                    >
-                      {st === 'completed' ? <CheckCircle className="h-5 w-5" /> : idx + 1}
-                    </div>
-                    <span
-                      className={`text-xs mt-2.5 font-bold uppercase tracking-wider ${
-                        st === 'completed' ? 'text-zinc-950' : 'text-zinc-400'
-                      }`}
-                    >
-                      {s.label}
-                    </span>
+                      className="h-full bg-zinc-950 transition-all duration-700 ease-out"
+                      style={{
+                        width:
+                          currentLevel === 1 ? '0%' :
+                          currentLevel === 2 ? '33.33%' :
+                          currentLevel === 3 ? '66.66%' :
+                          '100%',
+                      }}
+                    />
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* 4 Interactive Status Steps */}
+                  <div className="relative z-10 grid grid-cols-4 gap-2 text-center">
+                    {statusSteps.map((s) => {
+                      const isCompleted = s.step < currentLevel;
+                      const isActive = s.step === currentLevel;
+
+                      return (
+                        <div key={s.step} className="flex flex-col items-center">
+                          <div
+                            className={`relative flex h-10 w-10 items-center justify-center rounded-full text-xs font-black transition-all duration-300 ${
+                              isCompleted
+                                ? 'bg-zinc-950 text-white shadow-xs ring-4 ring-white'
+                                : isActive
+                                ? 'bg-zinc-950 text-white ring-4 ring-zinc-900/15 shadow-md scale-105'
+                                : 'bg-white text-zinc-400 border-2 border-zinc-200 ring-4 ring-white'
+                            }`}
+                          >
+                            {isCompleted ? (
+                              <Check className="h-4 w-4 stroke-[3]" />
+                            ) : isActive ? (
+                              <span className="relative flex items-center justify-center">
+                                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-zinc-400 opacity-75"></span>
+                                <span className="relative font-mono font-black">{s.step}</span>
+                              </span>
+                            ) : (
+                              <span className="font-mono font-bold text-zinc-400">{s.step}</span>
+                            )}
+                          </div>
+
+                          <span
+                            className={`text-xs mt-3 font-extrabold uppercase tracking-wider transition-colors ${
+                              isCompleted || isActive ? 'text-zinc-950' : 'text-zinc-400'
+                            }`}
+                          >
+                            {s.label}
+                          </span>
+                          <span className="text-[11px] text-zinc-400 mt-0.5 hidden sm:block">
+                            {s.desc}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
+
+          {/* Tracking Updates & Activity Timeline */}
+          {(() => {
+            const histories = (order.status_histories || (order as any).statusHistories || []) as Array<{
+              status: string;
+              notes?: string;
+              created_at: string;
+            }>;
+            if (!histories.length) return null;
+
+            return (
+              <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-5 space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-600 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-zinc-900" />
+                  <span>Tracking Milestones & Activity</span>
+                </h4>
+                <div className="space-y-3 pt-1">
+                  {histories.slice().reverse().map((h, i: number) => (
+                    <div key={i} className="flex items-start gap-3 text-xs">
+                      <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
+                        {i === 0 && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        )}
+                        <span
+                          className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                            i === 0 ? 'bg-emerald-600' : 'bg-zinc-400'
+                          }`}
+                        ></span>
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-zinc-900 capitalize">
+                            {statusLabel(h.status)}
+                          </span>
+                          <span className="text-[11px] text-zinc-400 font-mono">
+                            {formatDateTime(h.created_at)}
+                          </span>
+                        </div>
+                        {h.notes && (
+                          <p className="text-[11px] text-zinc-600 mt-0.5 leading-relaxed">{h.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Order Details & Summary */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-zinc-100">
