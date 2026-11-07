@@ -43,6 +43,17 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
     return { data: { data: catalogData.categories as unknown as Category[] } };
   }
 
+  if (endpoint === 'products/suggestions') {
+    const q = (params.get('q') || '').toLowerCase().trim();
+    if (!q) {
+      return { data: { data: (catalogData.products as any[]).slice(0, 4) } };
+    }
+    const matches = (catalogData.products as any[])
+      .filter((p) => p.name.toLowerCase().includes(q) || p.brand?.name?.toLowerCase().includes(q))
+      .slice(0, 8);
+    return { data: { data: matches } };
+  }
+
   if (endpoint.startsWith('products/')) {
     const slug = endpoint.replace('products/', '');
     const found = (catalogData.products as any[]).find((p) => p.slug === slug);

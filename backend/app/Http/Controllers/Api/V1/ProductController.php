@@ -140,15 +140,20 @@ class ProductController extends Controller
 
     public function suggestions(Request $request): JsonResponse
     {
-        $q = $request->input('q', '');
-        if (strlen($q) < 2) {
+        $q = trim((string)$request->input('q', ''));
+        if (strlen($q) < 1) {
             return response()->json(['success' => true, 'data' => []]);
         }
 
         $products = Product::active()
-            ->where('name', 'like', "%{$q}%")
+            ->where(function ($query) use ($q) {
+                $query->where('name', 'like', "%{$q}%")
+                      ->orWhereHas('brand', function ($b) use ($q) {
+                          $b->where('name', 'like', "%{$q}%");
+                      });
+            })
             ->with(['brand', 'primaryImage'])
-            ->limit(6)
+            ->limit(8)
             ->get(['id', 'brand_id', 'name', 'slug', 'base_price', 'sale_price']);
 
         return response()->json([
