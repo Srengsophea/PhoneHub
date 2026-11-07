@@ -15,22 +15,23 @@ class BankTransferGateway implements PaymentGatewayInterface
         $payment = Payment::create([
             'order_id' => $order->id,
             'transaction_id' => $refNumber,
-            'provider' => 'bank_transfer',
+            'provider' => 'khqr',
             'amount' => $order->total_amount,
             'currency' => 'USD',
             'status' => 'pending',
             'payload' => [
-                'bank_name' => 'ABA Bank (KHQR)',
-                'account_name' => 'PHONEHUB E-COMMERCE CO., LTD',
-                'account_number' => '001 234 567',
+                'bank_name' => 'Bakong KHQR (All Banks)',
+                'account_name' => 'PhoneHub',
+                'account_number' => 'sophea_sreng2@bkrt',
                 'reference_code' => $order->order_number,
-                'khqr_payload' => '00020101021229300016com.phonehub.kh01100012345675204599953038405407' . number_format($order->total_amount, 2, '.', '') . '5802KH5917PHONEHUB CAMBODIA6010Phnom Penh6304',
+                'bakong_id' => 'sophea_sreng2@bkrt',
+                'khqr_payload' => '00020101021229220018sophea_sreng2@bkrt520459995303840540' . strlen(number_format($order->total_amount, 2, '.', '')) . number_format($order->total_amount, 2, '.', '') . '5802KH5908PhoneHub6010Phnom Penh6304',
             ],
         ]);
 
         $order->update([
             'payment_status' => 'pending',
-            'payment_method' => 'bank_transfer',
+            'payment_method' => 'khqr',
         ]);
 
         return [

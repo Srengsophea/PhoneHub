@@ -50,12 +50,26 @@ class OrderController extends Controller
 
     public function track(string $orderNumber): JsonResponse
     {
+        if (empty($orderNumber) || $orderNumber === 'undefined' || $orderNumber === 'null') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter a valid PhoneHub tracking number.',
+            ], 400);
+        }
+
         $order = Order::where('order_number', $orderNumber)
             ->with([
                 'items.product.primaryImage',
                 'statusHistories',
             ])
-            ->firstOrFail();
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => "Order #{$orderNumber} was not found. Please double-check your tracking ID.",
+            ], 404);
+        }
 
         return response()->json([
             'success' => true,

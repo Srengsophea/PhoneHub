@@ -5,34 +5,60 @@ import api from '@/lib/api';
 import { Button, Input, Badge } from '@/components/ui';
 import { formatPrice, formatDateTime, orderStatusTone, statusLabel } from '@/lib/format';
 import type { Order } from '@/types';
+import { getLocalOrder } from '@/lib/orders';
 
 export function OrderTrackingPage() {
   const { orderNumber } = useParams<{ orderNumber?: string }>();
   const navigate = useNavigate();
 
-  const [inputNum, setInputNum] = useState(orderNumber || '');
+  const [inputNum, setInputNum] = useState(
+    orderNumber && orderNumber !== 'undefined' && orderNumber !== 'null' ? orderNumber : ''
+  );
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function track(num: string) {
+      if (!num || num === 'undefined' || num === 'null') {
+        setError(null);
+        setOrder(null);
+        return;
+      }
+
       setLoading(true);
       setError(null);
+
+      // Check local offline orders history first
+      const local = getLocalOrder(num);
+      if (local) {
+        setOrder(local);
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data } = await api.get(`/orders/track/${encodeURIComponent(num)}`);
-        setOrder(data.data);
+        if (data?.data) {
+          setOrder(data.data);
+        } else {
+          setError(`Order #${num} was not found. Please check your tracking number.`);
+        }
       } catch (err: any) {
         setOrder(null);
-        setError(err.response?.data?.message || 'Order not found. Please double-check your tracking ID.');
+        setError(err.response?.data?.message || `Order #${num} was not found. Please double-check your tracking ID.`);
       } finally {
         setLoading(false);
       }
     }
 
-    if (orderNumber) {
+    if (orderNumber && orderNumber !== 'undefined' && orderNumber !== 'null') {
       setInputNum(orderNumber);
       track(orderNumber);
+    } else {
+      setInputNum('');
+      setOrder(null);
+      setError(null);
     }
   }, [orderNumber]);
 
@@ -158,7 +184,19 @@ export function OrderTrackingPage() {
               </div>
               <div className="flex justify-between text-zinc-600">
                 <span>Payment Method:</span>
-                <span className="font-medium text-zinc-900 uppercase">{order.payment_method}</span>
+                <span className="font-medium text-zinc-900 uppercase">
+                  {order.payment_method === 'khqr' ? 'Bakong KHQR' : order.payment_method}
+                </span>
+              </div>
+              <div className="flex justify-between text-zinc-600 items-center">
+                <span>Payment Status:</span>
+                <span
+                  className={`font-bold px-2 py-0.5 rounded-full text-[10px] uppercase ${
+                    order.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
+                  {order.payment_status === 'paid' ? 'Paid (Bakong KHQR)' : order.payment_status}
+                </span>
               </div>
               <div className="flex justify-between text-zinc-600 pt-2 border-t border-zinc-200">
                 <span className="font-semibold text-zinc-900">Total Billed:</span>

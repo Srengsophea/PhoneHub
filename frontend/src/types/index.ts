@@ -236,6 +236,7 @@ export interface Order {
   shipping_address_snapshot?: Partial<Address> | null;
   customer_notes?: string | null;
   admin_notes?: string | null;
+  paid_at?: string | null;
   items?: OrderItem[];
   items_count?: number;
   status_histories?: OrderStatusHistory[];

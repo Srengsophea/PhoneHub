@@ -30,7 +30,7 @@ class CheckoutController extends Controller
             'shipping_address.postal_code' => 'nullable|string|max:20',
             'shipping_address.country' => 'nullable|string|max:100',
             'shipping_address.delivery_notes' => 'nullable|string|max:500',
-            'payment_method' => 'required|string|in:cod,bank_transfer,stripe',
+            'payment_method' => 'required|string|in:cod,bank_transfer,stripe,khqr',
             'shipping_method' => 'nullable|string|in:standard,express,pickup',
             'customer_notes' => 'nullable|string|max:500',
             'payment_data' => 'nullable|array',

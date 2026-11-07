@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Truck, ArrowRight, CreditCard, Banknote, Landmark } from 'lucide-react';
+import { ShieldCheck, Truck, ArrowRight, CreditCard, Banknote, QrCode } from 'lucide-react';
 import { useCart } from '@/stores/cart';
 import { useAuth } from '@/stores/auth';
 import { Button, Input } from '@/components/ui';
-import { formatPrice, productImage } from '@/lib/format';
+import { formatPrice, productImage, toNumber } from '@/lib/format';
 import api, { getErrorMessage } from '@/lib/api';
+import { KHQRModal } from '@/components/KHQRModal';
+import { generateKHQR, type GeneratedKHQR, BAKONG_ACCOUNT_ID, MERCHANT_NAME } from '@/lib/khqr';
+import { saveLocalOrder, updateLocalOrderStatus } from '@/lib/orders';
 import toast from 'react-hot-toast';
 
 export function CheckoutPage() {
@@ -14,8 +17,11 @@ export function CheckoutPage() {
   const { user, openAuthModal } = useAuth();
 
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank_transfer' | 'stripe'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'khqr' | 'cod' | 'stripe'>('khqr');
   const [couponInput, setCouponInput] = useState('');
+  const [khqrModalOpen, setKhqrModalOpen] = useState(false);
+  const [khqrData, setKhqrData] = useState<GeneratedKHQR | null>(null);
+  const [pendingOrder, setPendingOrder] = useState<any | null>(null);
   const { applyCoupon, removeCoupon } = useCart();
 
   const [formData, setFormData] = useState({
@@ -36,7 +42,7 @@ export function CheckoutPage() {
     }
   }, [user]);
 
-  if (cart.items.length === 0) {
+  if (cart.items.length === 0 && !pendingOrder) {
     return (
       <div className="container-page py-24 text-center">
         <h2 className="text-2xl font-bold text-zinc-900">Your cart is empty</h2>
@@ -83,15 +89,37 @@ export function CheckoutPage() {
         customer_notes: formData.customer_notes,
       });
 
-      await clearCart();
-      toast.success('Order placed successfully!');
-      const order = data.data;
-      navigate(`/orders/track/${order.order_number}`);
+      const order = data.data?.order || data.data;
+      const orderNumber =
+        order?.order_number || ('PH-' + new Date().getFullYear() + '-' + Math.floor(100000 + Math.random() * 900000));
+      const fullOrder = { ...order, order_number: orderNumber };
+      saveLocalOrder(fullOrder);
+
+      if (paymentMethod === 'khqr') {
+        const qr = await generateKHQR(toNumber(cart.total_amount), orderNumber);
+        setKhqrData(qr);
+        setPendingOrder(fullOrder);
+        setKhqrModalOpen(true);
+      } else {
+        await clearCart();
+        toast.success('Order placed successfully!');
+        navigate(`/orders/track/${orderNumber}`);
+      }
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleKHQRSuccess = async () => {
+    if (pendingOrder) {
+      updateLocalOrderStatus(pendingOrder.order_number, 'pending', 'paid');
+    }
+    await clearCart();
+    setKhqrModalOpen(false);
+    const targetNum = pendingOrder?.order_number || 'PH-2026-000001';
+    navigate(`/orders/track/${targetNum}`);
   };
 
   return (
@@ -161,55 +189,84 @@ export function CheckoutPage() {
 
           {/* Payment Method */}
           <div className="rounded-3xl border border-zinc-200/80 p-6 space-y-4 bg-white">
-            <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-brand-600" />
-              2. Payment Method
+            <h2 className="text-lg font-bold text-zinc-900 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-brand-600" />
+                2. Payment Method
+              </span>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-[#D32F2F]">
+                Bakong KHQR Active
+              </span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Bakong KHQR */}
+              <div
+                onClick={() => setPaymentMethod('khqr')}
+                className={`p-4 rounded-2xl border cursor-pointer transition relative overflow-hidden ${
+                  paymentMethod === 'khqr'
+                    ? 'border-[#D32F2F] bg-red-50/50 shadow-sm'
+                    : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black px-1.5 py-0.5 rounded bg-[#D32F2F] text-white">
+                      KHQR
+                    </span>
+                    <span className="text-[11px] font-bold text-zinc-700">Bakong</span>
+                  </div>
+                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">
+                    Instant
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-zinc-950">Bakong KHQR</p>
+                <p className="text-xs text-zinc-500 mt-0.5">ABA, Wing, ACLEDA & all banks</p>
+                <p className="text-[10px] font-mono text-zinc-400 mt-1">To: {BAKONG_ACCOUNT_ID}</p>
+              </div>
+
+              {/* Cash on Delivery */}
               <div
                 onClick={() => setPaymentMethod('cod')}
                 className={`p-4 rounded-2xl border cursor-pointer transition ${
                   paymentMethod === 'cod'
-                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                    ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm'
                     : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
                 }`}
               >
                 <Banknote className="h-5 w-5 mb-2" />
                 <p className="text-sm font-bold">Cash on Delivery</p>
-                <p className="text-xs opacity-75 mt-0.5">Pay upon receiving phone</p>
+                <p className={`text-xs mt-0.5 ${paymentMethod === 'cod' ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                  Pay upon receiving phone
+                </p>
+                <p className={`text-[10px] mt-1 ${paymentMethod === 'cod' ? 'text-zinc-400' : 'text-zinc-400'}`}>
+                  Phnom Penh & Provinces
+                </p>
               </div>
 
-              <div
-                onClick={() => setPaymentMethod('bank_transfer')}
-                className={`p-4 rounded-2xl border cursor-pointer transition ${
-                  paymentMethod === 'bank_transfer'
-                    ? 'border-zinc-900 bg-zinc-900 text-white'
-                    : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
-                }`}
-              >
-                <Landmark className="h-5 w-5 mb-2" />
-                <p className="text-sm font-bold">Bank Transfer</p>
-                <p className="text-xs opacity-75 mt-0.5">ABA Bank / Bakong KHQR</p>
-              </div>
-
+              {/* Credit Card */}
               <div
                 onClick={() => setPaymentMethod('stripe')}
                 className={`p-4 rounded-2xl border cursor-pointer transition ${
                   paymentMethod === 'stripe'
-                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                    ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm'
                     : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
                 }`}
               >
                 <CreditCard className="h-5 w-5 mb-2" />
-                <p className="text-sm font-bold">Credit Card</p>
-                <p className="text-xs opacity-75 mt-0.5">Visa, Mastercard, Amex</p>
+                <p className="text-sm font-bold">Credit / Debit Card</p>
+                <p className={`text-xs mt-0.5 ${paymentMethod === 'stripe' ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                  Visa, Mastercard, Amex
+                </p>
+                <p className={`text-[10px] mt-1 ${paymentMethod === 'stripe' ? 'text-zinc-400' : 'text-zinc-400'}`}>
+                  International Cards
+                </p>
               </div>
             </div>
           </div>
 
-          <Button type="submit" loading={loading} size="lg" className="w-full text-base">
-            Complete Order ({formatPrice(cart.total_amount)})
+          <Button type="submit" loading={loading} size="lg" className="w-full text-base bg-zinc-950 hover:bg-zinc-800">
+            {paymentMethod === 'khqr' ? 'Proceed to KHQR Payment' : 'Complete Order'} ({formatPrice(cart.total_amount)})
           </Button>
         </form>
 
@@ -286,6 +343,14 @@ export function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Official Bakong KHQR Payment Modal */}
+      <KHQRModal
+        isOpen={khqrModalOpen}
+        onClose={() => setKhqrModalOpen(false)}
+        onSuccess={handleKHQRSuccess}
+        khqrData={khqrData}
+      />
     </div>
   );
 }
