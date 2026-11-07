@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatPrice, formatDateTime, orderStatusTone, statusLabel, productImage } from '@/lib/format';
-import { getLocalOrders } from '@/lib/orders';
+import { getLocalOrders, isOrderOwnedByUser } from '@/lib/orders';
 import {
   fetchUserAddresses,
   createAddress,
@@ -83,8 +83,9 @@ export function UserProfilePage() {
     setProfileName(user.name);
     setProfilePhone(user.phone || '');
 
-    // Load Orders: merge remote API orders and local orders
+    // Load Orders: fetch personal orders and merge with current user's local orders
     async function loadOrders() {
+      if (!user) return;
       setLoadingOrders(true);
       try {
         let apiOrders: Order[] = [];
@@ -95,10 +96,13 @@ export function UserProfilePage() {
           }
         } catch {}
 
-        const localOrders = getLocalOrders();
+        // Strictly isolate local orders to the currently logged in user
+        const localOrders = getLocalOrders(user);
         const map = new Map<string, Order>();
+
+        // Ensure every order displayed belongs to current user
         [...apiOrders, ...localOrders].forEach((o) => {
-          if (o.order_number && !map.has(o.order_number)) {
+          if (o.order_number && isOrderOwnedByUser(o, user) && !map.has(o.order_number)) {
             map.set(o.order_number, o);
           }
         });

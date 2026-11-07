@@ -125,8 +125,23 @@ export function CheckoutPage() {
       const order = data?.data?.order || data?.data?.data?.order || data?.data || {};
       const orderNumber =
         order?.order_number || ('PH-' + new Date().getFullYear() + '-' + Math.floor(100000 + Math.random() * 900000));
-      const fullOrder = { ...order, order_number: orderNumber };
-      saveLocalOrder(fullOrder);
+      const fullOrder = {
+        ...order,
+        order_number: orderNumber,
+        user_id: user?.id ?? order?.user_id,
+        user: user || order?.user,
+        customer_email: user?.email,
+        customer_name: user?.name || formData.full_name,
+        shipping_address: {
+          ...formData,
+          email: user?.email,
+        },
+        shipping_address_snapshot: {
+          ...formData,
+          email: user?.email,
+        },
+      };
+      saveLocalOrder(fullOrder, user);
 
       if (paymentMethod === 'khqr') {
         const qr = await generateKHQR(toNumber(cart.total_amount), orderNumber);

@@ -173,11 +173,20 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
     const totalAmount = subtotal + (items.length ? shippingFee : 0);
     const orderNumber = 'PH-' + new Date().getFullYear() + '-' + Math.floor(100000 + Math.random() * 900000);
 
+    let currentUser: any = null;
+    try {
+      const stored = localStorage.getItem('phonehub_offline_user');
+      if (stored) currentUser = JSON.parse(stored);
+    } catch {}
+
     const isPaid = data?.payment_method === 'khqr' || data?.payment_method === 'stripe';
     const order = {
       id: Date.now(),
       order_number: orderNumber,
-      user_id: 1,
+      user_id: currentUser?.id ?? (data?.user_id || 2),
+      user: currentUser || undefined,
+      customer_email: currentUser?.email || data?.shipping_address?.email || null,
+      customer_name: currentUser?.name || data?.shipping_address?.full_name || null,
       status: 'pending',
       payment_status: isPaid ? 'paid' : 'pending',
       payment_method: data?.payment_method || 'khqr',
@@ -351,6 +360,62 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
           total_customers: 89,
           total_products: catalogData.products?.length || 101,
           recent_orders: [],
+        },
+      },
+    };
+  }
+
+  if (endpoint === 'orders' || endpoint.startsWith('orders?')) {
+    let currentUser: any = null;
+    try {
+      const stored = localStorage.getItem('phonehub_offline_user');
+      if (stored) currentUser = JSON.parse(stored);
+    } catch {}
+
+    const stored = localStorage.getItem('phonehub_orders_history');
+    const orders: any[] = stored ? JSON.parse(stored) : [];
+
+    // Filter personal orders strictly by current user
+    const userOrders = currentUser
+      ? orders.filter((o) => {
+          if (o.user_id && currentUser.id && o.user_id !== currentUser.id) return false;
+          if (o.user?.id && currentUser.id && o.user.id !== currentUser.id) return false;
+          const orderEmail = o.user?.email || o.customer_email || o.shipping_address?.email;
+          if (orderEmail && currentUser.email && orderEmail.toLowerCase() !== currentUser.email.toLowerCase()) return false;
+          if (o.user_id && currentUser.id && o.user_id === currentUser.id) return true;
+          if (orderEmail && currentUser.email && orderEmail.toLowerCase() === currentUser.email.toLowerCase()) return true;
+          const addrName = o.shipping_address?.full_name || o.shipping_address_snapshot?.full_name;
+          if (addrName && currentUser.name && addrName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) return true;
+          return false;
+        })
+      : [];
+
+    return {
+      data: {
+        success: true,
+        data: userOrders,
+        meta: {
+          current_page: 1,
+          last_page: 1,
+          total: userOrders.length,
+          per_page: 15,
+        },
+      },
+    };
+  }
+
+  if (endpoint.startsWith('admin/orders')) {
+    const stored = localStorage.getItem('phonehub_orders_history');
+    const orders: any[] = stored ? JSON.parse(stored) : [];
+    return {
+      data: {
+        success: true,
+        data: orders,
+        meta: {
+          current_page: 1,
+          last_page: 1,
+          total: orders.length,
+          per_page: 15,
         },
       },
     };
