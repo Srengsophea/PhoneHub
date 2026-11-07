@@ -23,7 +23,6 @@ import { useCompare } from '@/stores/compare';
 import { useAuth } from '@/stores/auth';
 import type { Product, ProductVariant, Specification, Review } from '@/types';
 import toast from 'react-hot-toast';
-import catalogData from '@/data/catalog.json';
 
 const COLOR_MAP: Record<string, string> = {
   'natural titanium': '#9e968d',
@@ -91,11 +90,7 @@ export function ProductDetailPage() {
       setLoading(true);
       try {
         const { data } = await api.get(`/products/${slug}`);
-        let p: Product | undefined = data?.data;
-        if (!p || typeof p !== 'object' || !p.name) {
-          const fallback = (catalogData.products as unknown as Product[]).find((it) => it.slug === slug);
-          if (fallback) p = fallback;
-        }
+        const p: Product | undefined = data?.data;
         if (p) {
           setProduct(p);
           const firstVar = p.variants?.[0];
@@ -113,28 +108,12 @@ export function ProductDetailPage() {
           } else {
             setSelectedImage(productImage(p));
           }
+        } else {
+          setProduct(null);
         }
       } catch (err) {
         console.error(err);
-        const fallback = (catalogData.products as unknown as Product[]).find((it) => it.slug === slug);
-        if (fallback) {
-          setProduct(fallback);
-          const firstVar = fallback.variants?.[0];
-          if (firstVar) {
-            setSelectedVariant(firstVar);
-            setSelectedStorage(firstVar.storage || '');
-            setSelectedColor(firstVar.color || '');
-
-            const initialColorImg =
-              (firstVar as any).image_url ||
-              firstVar.images?.[0]?.image_path ||
-              fallback.images?.find((img) => img.variant_id === firstVar.id)?.image_path ||
-              null;
-            setSelectedImage(initialColorImg ? imageUrl(initialColorImg) : productImage(fallback));
-          } else {
-            setSelectedImage(productImage(fallback));
-          }
-        }
+        setProduct(null);
       } finally {
         setLoading(false);
       }

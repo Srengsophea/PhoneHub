@@ -24,14 +24,12 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatPrice, formatDateTime, orderStatusTone, statusLabel, productImage } from '@/lib/format';
-import { getLocalOrders, isOrderOwnedByUser } from '@/lib/orders';
 import {
   fetchUserAddresses,
   createAddress,
   updateAddress,
   deleteAddress,
   setDefaultAddress,
-  getLocalAddresses,
 } from '@/lib/addresses';
 import { InvoiceModal } from '@/components/InvoiceModal';
 import type { Order, Address } from '@/types';
@@ -83,33 +81,17 @@ export function UserProfilePage() {
     setProfileName(user.name);
     setProfilePhone(user.phone || '');
 
-    // Load Orders: fetch personal orders and merge with current user's local orders
+    // Load Orders: fetch personal orders directly from backend API
     async function loadOrders() {
       if (!user) return;
       setLoadingOrders(true);
       try {
-        let apiOrders: Order[] = [];
-        try {
-          const { data } = await api.get('/orders');
-          if (Array.isArray(data.data)) {
-            apiOrders = data.data;
-          }
-        } catch {}
-
-        // Strictly isolate local orders to the currently logged in user
-        const localOrders = getLocalOrders(user);
-        const map = new Map<string, Order>();
-
-        // Ensure every order displayed belongs to current user
-        [...apiOrders, ...localOrders].forEach((o) => {
-          if (o.order_number && isOrderOwnedByUser(o, user) && !map.has(o.order_number)) {
-            map.set(o.order_number, o);
-          }
-        });
-        const combined = Array.from(map.values()).sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        setOrders(combined);
+        const { data } = await api.get('/orders');
+        const apiOrders: Order[] = Array.isArray(data?.data) ? data.data : [];
+        setOrders(apiOrders);
+      } catch (err) {
+        console.error('Failed to load orders from backend:', err);
+        setOrders([]);
       } finally {
         setLoadingOrders(false);
       }
@@ -236,7 +218,8 @@ export function UserProfilePage() {
     if (!confirm('Are you sure you want to delete this address?')) return;
     try {
       await deleteAddress(id);
-      setAddresses(getLocalAddresses());
+      const updated = await fetchUserAddresses();
+      setAddresses(updated);
       toast.success('Address removed.');
     } catch {
       toast.error('Failed to remove address.');
@@ -246,7 +229,8 @@ export function UserProfilePage() {
   const handleSetDefaultAddress = async (id: number) => {
     try {
       await setDefaultAddress(id);
-      setAddresses(getLocalAddresses());
+      const updated = await fetchUserAddresses();
+      setAddresses(updated);
       toast.success('Default address updated.');
     } catch {
       toast.error('Failed to update default address.');

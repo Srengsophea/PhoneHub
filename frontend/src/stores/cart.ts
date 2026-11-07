@@ -80,30 +80,15 @@ export const useCart = create<CartState>((set, get) => {
       try {
         const res = await api.get('/cart');
         const incoming = res.data?.data;
-        if (incoming && Array.isArray(incoming.items) && incoming.items.length > 0) {
+        if (incoming) {
           const updated = { ...emptyCart, ...incoming };
           save(updated);
           set({ cart: updated, loading: false });
         } else {
-          // If server cart is empty but we have local items, keep local and sync to backend
-          const local = getInitialCart();
-          if (local.items.length > 0) {
-            set({ cart: local, loading: false });
-            for (const item of local.items) {
-              try {
-                await api.post('/cart/items', {
-                  product_id: item.product_id,
-                  variant_id: item.variant_id || null,
-                  quantity: item.quantity,
-                });
-              } catch {}
-            }
-          } else {
-            set({ cart: emptyCart, loading: false });
-          }
+          set({ cart: emptyCart, loading: false });
         }
       } catch (err) {
-        set({ cart: getInitialCart(), loading: false });
+        set({ cart: emptyCart, loading: false });
       }
     },
     add: (productId, variantId = null, quantity = 1, openDrawer = true) => {

@@ -3,21 +3,17 @@ import { Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { BrandLogo } from '@/components/BrandLogo';
 import type { Brand } from '@/types';
-import { Loader2, ArrowRight } from 'lucide-react';
-import catalogData from '@/data/catalog.json';
+import { ArrowRight } from 'lucide-react';
 
 export function BrandsPage() {
-  const allBrands = (catalogData.brands as unknown as Brand[]) || [];
-  const [brands, setBrands] = useState<Brand[]>(() => allBrands);
-  const [loading, setLoading] = useState(false);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchBrands() {
       try {
         const { data } = await api.get('/brands');
-        if (Array.isArray(data.data) && data.data.length > 0) {
-          setBrands(data.data);
-        }
+        setBrands(data.data || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -29,8 +25,19 @@ export function BrandsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      <div className="container-page py-12 space-y-10 animate-fade-in">
+        <div className="space-y-2">
+          <div className="h-4 w-32 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+          <div className="h-8 w-64 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="h-28 rounded-md border border-zinc-200 bg-white p-5 space-y-2">
+              <div className="h-8 w-20 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+              <div className="h-4 w-32 rounded bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

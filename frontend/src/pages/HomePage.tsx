@@ -16,20 +16,12 @@ import { ProductCard } from '@/components/ProductCard';
 import { BrandLogo } from '@/components/BrandLogo';
 import type { Product, Brand } from '@/types';
 import { Button } from '@/components/ui';
-import catalogData from '@/data/catalog.json';
 
 export function HomePage() {
-  const allProds = (catalogData.products as unknown as Product[]) || [];
-  const allBrands = (catalogData.brands as unknown as Brand[]) || [];
-
-  const [featured, setFeatured] = useState<Product[]>(() =>
-    allProds.filter((p) => Boolean(p.is_featured)).slice(0, 4)
-  );
-  const [bestsellers, setBestsellers] = useState<Product[]>(() =>
-    allProds.filter((p) => Boolean(p.is_bestseller)).slice(0, 8)
-  );
-  const [brands, setBrands] = useState<Brand[]>(() => allBrands);
-  const [loading, setLoading] = useState(false);
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [bestsellers, setBestsellers] = useState<Product[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeSpotlight, setActiveSpotlight] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -102,15 +94,9 @@ export function HomePage() {
           api.get('/products?sort=best_selling&per_page=8'),
           api.get('/brands'),
         ]);
-        if (Array.isArray(featRes.data?.data) && featRes.data.data.length > 0) {
-          setFeatured(featRes.data.data);
-        }
-        if (Array.isArray(bestRes.data?.data) && bestRes.data.data.length > 0) {
-          setBestsellers(bestRes.data.data);
-        }
-        if (Array.isArray(brandRes.data?.data) && brandRes.data.data.length > 0) {
-          setBrands(brandRes.data.data);
-        }
+        setFeatured(featRes.data?.data || []);
+        setBestsellers(bestRes.data?.data || []);
+        setBrands(brandRes.data?.data || []);
       } catch (err) {
         console.error(err);
       } finally {

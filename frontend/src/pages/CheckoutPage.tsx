@@ -9,7 +9,7 @@ import api, { getErrorMessage } from '@/lib/api';
 import { KHQRModal } from '@/components/KHQRModal';
 import { generateKHQR, type GeneratedKHQR, BAKONG_ACCOUNT_ID, MERCHANT_NAME } from '@/lib/khqr';
 import { saveLocalOrder, updateLocalOrderStatus } from '@/lib/orders';
-import { getLocalAddresses } from '@/lib/addresses';
+import { fetchUserAddresses } from '@/lib/addresses';
 import type { Address } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -46,26 +46,30 @@ export function CheckoutPage() {
   });
 
   useEffect(() => {
-    const list = getLocalAddresses();
-    setSavedAddresses(list);
-    const defaultAddr = list.find((a) => a.is_default) || list[0];
-    if (defaultAddr) {
-      setFormData((prev) => ({
-        ...prev,
-        full_name: defaultAddr.full_name || prev.full_name,
-        phone: defaultAddr.phone || prev.phone,
-        address_line_1: defaultAddr.address_line_1 || prev.address_line_1,
-        address_line_2: defaultAddr.address_line_2 || prev.address_line_2,
-        city: defaultAddr.city || prev.city,
-        province: defaultAddr.province || prev.province,
-      }));
-    } else if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        full_name: prev.full_name || user.name || '',
-        phone: prev.phone || user.phone || '',
-      }));
+    async function loadAddr() {
+      if (!user) return;
+      const list = await fetchUserAddresses();
+      setSavedAddresses(list);
+      const defaultAddr = list.find((a: Address) => a.is_default) || list[0];
+      if (defaultAddr) {
+        setFormData((prev) => ({
+          ...prev,
+          full_name: defaultAddr.full_name || prev.full_name,
+          phone: defaultAddr.phone || prev.phone,
+          address_line_1: defaultAddr.address_line_1 || prev.address_line_1,
+          address_line_2: defaultAddr.address_line_2 || prev.address_line_2,
+          city: defaultAddr.city || prev.city,
+          province: defaultAddr.province || prev.province,
+        }));
+      } else if (user) {
+        setFormData((prev) => ({
+          ...prev,
+          full_name: prev.full_name || user.name || '',
+          phone: prev.phone || user.phone || '',
+        }));
+      }
     }
+    loadAddr();
   }, [user]);
 
   if (cart.items.length === 0 && !pendingOrder) {

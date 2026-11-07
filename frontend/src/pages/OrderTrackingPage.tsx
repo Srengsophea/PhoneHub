@@ -17,7 +17,6 @@ import api from '@/lib/api';
 import { Button, Input, Badge } from '@/components/ui';
 import { formatPrice, formatDateTime, orderStatusTone, statusLabel, productImage } from '@/lib/format';
 import type { Order } from '@/types';
-import { getLocalOrder } from '@/lib/orders';
 import { printOrderInvoice } from '@/lib/invoicePrinter';
 import toast from 'react-hot-toast';
 
@@ -53,15 +52,7 @@ export function OrderTrackingPage() {
       setLoading(true);
       setError(null);
 
-      // 1. Check local offline orders history first
-      const local = getLocalOrder(num);
-      if (local) {
-        setOrder(local);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Query track API endpoint
+      // Query track API endpoint directly from backend
       try {
         const { data } = await api.get(`/orders/track/${encodeURIComponent(num)}`);
         if (data?.data) {
