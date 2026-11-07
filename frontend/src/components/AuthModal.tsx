@@ -78,23 +78,6 @@ export function AuthModal() {
     }
   };
 
-  const handleFillDemo = (type: 'customer' | 'admin') => {
-    setError(null);
-    if (type === 'customer') {
-      setFormData((prev) => ({
-        ...prev,
-        email: 'khsophea20@gmail.com',
-        password: 'password',
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        email: 'admin@phonehub.com',
-        password: 'password',
-      }));
-    }
-  };
-
   return (
     <Modal open={authModal.open} onClose={closeAuthModal} size="md">
       <div className="space-y-6">
@@ -347,35 +330,6 @@ export function AuthModal() {
               </>
             )}
           </Button>
-
-          {/* Quick Demo Test Logins (Convenient for reviewer / testing) */}
-          {mode === 'login' && (
-            <div className="pt-2">
-              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
-                <div className="h-px bg-zinc-200 flex-1" />
-                <span>Quick Test Sign In</span>
-                <div className="h-px bg-zinc-200 flex-1" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('customer')}
-                  className="px-2.5 py-1.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-xs font-semibold text-zinc-700 transition flex items-center justify-center gap-1.5 active:scale-95"
-                >
-                  <User className="h-3.5 w-3.5 text-zinc-500" />
-                  <span>Customer Demo</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('admin')}
-                  className="px-2.5 py-1.5 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-xs font-semibold text-zinc-700 transition flex items-center justify-center gap-1.5 active:scale-95"
-                >
-                  <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Admin Demo</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Footer Switching Hint */}
           <div className="pt-2 text-center text-xs text-zinc-500">
