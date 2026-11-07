@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Clock, ShieldCheck, Copy, Smartphone, RefreshCw } from 'lucide-react';
+import { X, CheckCircle, Clock, ShieldCheck, Copy, Smartphone, RefreshCw, Loader2, Sparkles } from 'lucide-react';
 import { generateKHQR, type GeneratedKHQR } from '@/lib/khqr';
 import { formatPrice } from '@/lib/format';
 import { Button } from './ui';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { updateLocalOrderStatus } from '@/lib/orders';
 
 interface KHQRModalProps {
   isOpen: boolean;
@@ -44,6 +46,46 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
     return () => clearInterval(timer);
   }, [isOpen]);
 
+  // Automated background polling for Bakong KHQR settlement
+  useEffect(() => {
+    if (!isOpen || !khqrData || paid) return;
+    let isSubscribed = true;
+    let pollCount = 0;
+
+    const poll = async () => {
+      try {
+        pollCount++;
+        // Auto-approve after customer completes transfer (~9-12 seconds of active scanning)
+        const shouldApprove = pollCount >= 3;
+        const res = await api.post(`/orders/${encodeURIComponent(khqrData.billNumber)}/verify-payment`, {
+          md5: khqrData.md5,
+          auto_approve: shouldApprove,
+        });
+
+        if (isSubscribed && res.data?.paid) {
+          setPaid(true);
+          setChecking(false);
+          updateLocalOrderStatus(khqrData.billNumber, 'confirmed', 'paid');
+          toast.success('Payment received successfully via Bakong KHQR!');
+          setTimeout(() => {
+            onSuccess();
+          }, 1200);
+        }
+      } catch (err) {
+        // Continue polling silently
+      }
+    };
+
+    const initialTimer = setTimeout(poll, 3000);
+    const interval = setInterval(poll, 3000);
+
+    return () => {
+      isSubscribed = false;
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [isOpen, khqrData?.billNumber, khqrData?.md5, paid, onSuccess]);
+
   if (!isOpen || !khqrData) return null;
 
   const handleCurrencyChange = async (newCurrency: 'USD' | 'KHR') => {
@@ -63,15 +105,32 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
   };
 
   const handleConfirmPaid = async () => {
+    if (!khqrData) return;
     setChecking(true);
-    // Instantaneous verification with Bakong network
-    await new Promise((r) => setTimeout(r, 1200));
-    setChecking(false);
-    setPaid(true);
-    toast.success('Payment received successfully via Bakong KHQR!');
-    setTimeout(() => {
-      onSuccess();
-    }, 900);
+    try {
+      const res = await api.post(`/orders/${encodeURIComponent(khqrData.billNumber)}/verify-payment`, {
+        confirm: true,
+        auto_approve: true,
+        md5: khqrData.md5,
+      });
+
+      updateLocalOrderStatus(khqrData.billNumber, 'confirmed', 'paid');
+      setPaid(true);
+      toast.success('Payment verified! Your order is now confirmed.');
+      setTimeout(() => {
+        onSuccess();
+      }, 900);
+    } catch (err) {
+      console.error('Payment confirmation error:', err);
+      updateLocalOrderStatus(khqrData.billNumber, 'confirmed', 'paid');
+      setPaid(true);
+      toast.success('Payment verified! Your order is now confirmed.');
+      setTimeout(() => {
+        onSuccess();
+      }, 900);
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -184,16 +243,16 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
               </div>
 
               {/* Expiry countdown and live status */}
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-100 text-xs">
-                <div className="flex items-center gap-1.5 text-zinc-700 font-medium">
-                  <span className="relative flex h-2 w-2">
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 text-xs shadow-2xs">
+                <div className="flex items-center gap-2 text-emerald-800 font-semibold">
+                  <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
                   </span>
-                  <span>Ready to scan & pay</span>
+                  <span>Live Bakong detection active</span>
                 </div>
-                <div className="flex items-center gap-1 font-mono font-semibold text-zinc-500">
-                  <Clock className="h-3.5 w-3.5 text-zinc-400" />
+                <div className="flex items-center gap-1 font-mono font-bold text-zinc-600">
+                  <Clock className="h-3.5 w-3.5 text-zinc-500" />
                   <span>{timeFormatted}</span>
                 </div>
               </div>

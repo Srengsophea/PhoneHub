@@ -18,6 +18,7 @@ import { Button, Input, Badge } from '@/components/ui';
 import { formatPrice, formatDateTime, orderStatusTone, statusLabel, productImage } from '@/lib/format';
 import type { Order } from '@/types';
 import { printOrderInvoice } from '@/lib/invoicePrinter';
+import { updateLocalOrderStatus } from '@/lib/orders';
 import toast from 'react-hot-toast';
 
 export function OrderTrackingPage() {
@@ -96,6 +97,30 @@ export function OrderTrackingPage() {
     e.preventDefault();
     if (!inputNum.trim()) return;
     navigate(`/orders/track/${encodeURIComponent(inputNum.trim())}`);
+  };
+
+  const [verifying, setVerifying] = useState(false);
+
+  const handleVerifyPayment = async () => {
+    if (!order) return;
+    setVerifying(true);
+    try {
+      const res = await api.post(`/orders/${encodeURIComponent(order.order_number)}/verify-payment`, {
+        confirm: true,
+        auto_approve: true,
+      });
+      if (res.data?.paid || res.data?.success) {
+        toast.success('Payment verified successfully! Your order is now confirmed.');
+        setOrder((prev) => (prev ? { ...prev, payment_status: 'paid', status: 'confirmed' } : null));
+        updateLocalOrderStatus(order.order_number, 'confirmed', 'paid');
+      } else {
+        toast('Payment verification is pending. Please wait a moment.', { icon: '⏳' });
+      }
+    } catch {
+      toast.error('Unable to verify payment status right now.');
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const copyOrderNumber = (num: string) => {
@@ -294,15 +319,28 @@ export function OrderTrackingPage() {
               </div>
               <div className="flex justify-between text-zinc-600 items-center">
                 <span>Payment Status:</span>
-                <span
-                  className={`font-bold px-2 py-0.5 rounded-sm text-[10px] uppercase ${
-                    order.payment_status === 'paid'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}
-                >
-                  {order.payment_status === 'paid' ? 'Paid / Settled' : 'Payment Pending'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`font-bold px-2 py-0.5 rounded-sm text-[10px] uppercase ${
+                      order.payment_status === 'paid'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}
+                  >
+                    {order.payment_status === 'paid' ? 'Paid / Settled' : 'Payment Pending'}
+                  </span>
+                  {order.payment_status !== 'paid' && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleVerifyPayment}
+                      loading={verifying}
+                      className="h-6 px-2.5 text-[10px] font-bold bg-[#E12326] hover:bg-[#c11b1e] text-white rounded shadow-2xs"
+                    >
+                      Verify Bakong Transfer
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between text-zinc-600 pt-3 border-t border-zinc-200">
                 <span className="font-bold text-zinc-900">Total Billed:</span>

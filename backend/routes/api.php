@@ -47,8 +47,10 @@ Route::prefix('v1')->group(function () {
     Route::get('/brands', [BrandController::class, 'index']);
     Route::get('/brands/{slug}', [BrandController::class, 'show']);
 
-    // Order Tracking (Public)
+    // Order Tracking & Payment Verification (Public)
     Route::get('/orders/track/{orderNumber}', [OrderController::class, 'track']);
+    Route::post('/orders/{orderNumber}/verify-payment', [OrderController::class, 'verifyPayment']);
+    Route::post('/orders/track/{orderNumber}/verify', [OrderController::class, 'verifyPayment']);
 
     // Cart Operations (Supports Guest Session + Authenticated)
     Route::prefix('cart')->group(function () {

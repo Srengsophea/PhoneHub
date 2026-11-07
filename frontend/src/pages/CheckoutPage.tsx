@@ -167,7 +167,7 @@ export function CheckoutPage() {
 
   const handleKHQRSuccess = async () => {
     if (pendingOrder) {
-      updateLocalOrderStatus(pendingOrder.order_number, 'pending', 'paid');
+      updateLocalOrderStatus(pendingOrder.order_number, 'confirmed', 'paid');
     }
     await clearCart();
     setKhqrModalOpen(false);

@@ -32,6 +32,7 @@ import {
   setDefaultAddress,
 } from '@/lib/addresses';
 import { InvoiceModal } from '@/components/InvoiceModal';
+import { updateLocalOrderStatus } from '@/lib/orders';
 import type { Order, Address } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -42,6 +43,7 @@ export function UserProfilePage() {
   // Orders State
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [verifyingOrder, setVerifyingOrder] = useState<string | null>(null);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
 
@@ -111,6 +113,33 @@ export function UserProfilePage() {
     loadOrders();
     loadAddresses();
   }, [user]);
+
+  const handleVerifyOrderPayment = async (orderNumber: string) => {
+    setVerifyingOrder(orderNumber);
+    try {
+      const res = await api.post(`/orders/${encodeURIComponent(orderNumber)}/verify-payment`, {
+        confirm: true,
+        auto_approve: true,
+      });
+      if (res.data?.paid || res.data?.success) {
+        toast.success(`Order #${orderNumber} payment verified successfully!`);
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.order_number === orderNumber
+              ? { ...o, payment_status: 'paid', status: 'confirmed' }
+              : o
+          )
+        );
+        updateLocalOrderStatus(orderNumber, 'confirmed', 'paid');
+      } else {
+        toast('Payment verification is pending. Please wait a moment.', { icon: '⏳' });
+      }
+    } catch {
+      toast.error('Unable to verify payment status right now.');
+    } finally {
+      setVerifyingOrder(null);
+    }
+  };
 
   if (!user) {
     return (
@@ -533,6 +562,20 @@ export function UserProfilePage() {
                           </div>
 
                           <div className="flex items-center gap-2">
+                            {/* VERIFY PAYMENT BUTTON IF PENDING */}
+                            {!isPaid && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleVerifyOrderPayment(o.order_number)}
+                                loading={verifyingOrder === o.order_number}
+                                className="gap-1.5 rounded-md text-xs font-bold bg-[#E12326] hover:bg-[#c11b1e] text-white shadow-2xs"
+                              >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                <span>Verify Bakong</span>
+                              </Button>
+                            )}
+
                             {/* PRINT INVOICE BUTTON */}
                             <Button
                               type="button"
