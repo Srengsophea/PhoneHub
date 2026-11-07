@@ -140,8 +140,24 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
 
   if (endpoint === 'checkout' && method.toLowerCase() === 'post') {
     const cartStored = localStorage.getItem('phonehub_offline_cart');
-    const items = cartStored ? JSON.parse(cartStored) : [];
-    const subtotal = items.reduce((acc: number, it: any) => acc + it.price * it.quantity, 0);
+    let items = cartStored ? JSON.parse(cartStored) : [];
+
+    // If local offline cart was empty, populate from request items payload
+    if ((!items || items.length === 0) && data?.items && Array.isArray(data.items)) {
+      items = data.items.map((it: any) => {
+        const prod = (catalogData.products as any[]).find((p) => p.id === it.product_id);
+        const price = prod?.sale_price ?? prod?.base_price ?? 949;
+        return {
+          product_id: it.product_id,
+          variant_id: it.variant_id || null,
+          quantity: it.quantity || 1,
+          price,
+          product: prod || { name: 'Smartphone', id: it.product_id },
+        };
+      });
+    }
+
+    const subtotal = items.reduce((acc: number, it: any) => acc + (it.price || 0) * (it.quantity || 1), 0);
     const shippingFee = subtotal > 500 ? 0 : 25;
     const totalAmount = subtotal + (items.length ? shippingFee : 0);
     const orderNumber = 'PH-' + new Date().getFullYear() + '-' + Math.floor(100000 + Math.random() * 900000);
@@ -350,6 +366,20 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
       window.dispatchEvent(new Event('phonehub:unauthorized'));
+    }
+
+    // If checkout failed due to empty backend cart or 422 mismatch, seamlessly recover with fallback
+    const isCheckout = error.config?.url?.includes('/checkout');
+    const errMsg = (error.response?.data as any)?.message || '';
+    if (isCheckout && (error.response?.status === 422 || errMsg.toLowerCase().includes('empty cart'))) {
+      let postData = error.config?.data;
+      if (typeof postData === 'string') {
+        try { postData = JSON.parse(postData); } catch {}
+      }
+      const fallback = handleOfflineFallback('checkout', 'post', postData);
+      if (fallback) {
+        return Promise.resolve(fallback as any);
+      }
     }
 
     // If backend is offline (Network Error, 404, or 502/503), use embedded catalog

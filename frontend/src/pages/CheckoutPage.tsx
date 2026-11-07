@@ -75,6 +75,12 @@ export function CheckoutPage() {
 
     setLoading(true);
     try {
+      const payloadItems = cart.items.map((it) => ({
+        product_id: it.product_id,
+        variant_id: it.variant_id || null,
+        quantity: it.quantity,
+      }));
+
       const { data } = await api.post('/checkout', {
         shipping_address: {
           full_name: formData.full_name,
@@ -87,6 +93,7 @@ export function CheckoutPage() {
         },
         payment_method: paymentMethod,
         customer_notes: formData.customer_notes,
+        items: payloadItems,
       });
 
       const order = data.data?.order || data.data;

@@ -199,3 +199,4 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData }: KHQRModalPro
     </div>
   );
 }
+

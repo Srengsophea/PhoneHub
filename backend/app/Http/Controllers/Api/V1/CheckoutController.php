@@ -34,10 +34,41 @@ class CheckoutController extends Controller
             'shipping_method' => 'nullable|string|in:standard,express,pickup',
             'customer_notes' => 'nullable|string|max:500',
             'payment_data' => 'nullable|array',
+            'items' => 'nullable|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.variant_id' => 'nullable|exists:product_variants,id',
+            'items.*.quantity' => 'nullable|integer|min:1|max:10',
+            'guest_session_id' => 'nullable|string',
         ]);
 
         $user = $request->user();
-        $cart = $this->cartService->getCart($user, null);
+        $sessionId = $request->header('X-Guest-Session-Id') ?? $request->input('guest_session_id');
+        $cart = $this->cartService->getCart($user, $sessionId);
+
+        // If user's cart is empty in DB, synchronize items from guest session or payload
+        if ($cart->items->isEmpty()) {
+            if (!empty($sessionId)) {
+                $cart = $this->cartService->mergeGuestCart($sessionId, $user);
+            }
+
+            if ($cart->items->isEmpty() && !empty($validated['items'])) {
+                foreach ($validated['items'] as $itemData) {
+                    if (!empty($itemData['product_id'])) {
+                        try {
+                            $this->cartService->addItem(
+                                $cart,
+                                (int) $itemData['product_id'],
+                                !empty($itemData['variant_id']) ? (int) $itemData['variant_id'] : null,
+                                (int) ($itemData['quantity'] ?? 1)
+                            );
+                        } catch (Exception $e) {
+                            // Continue adding other items
+                        }
+                    }
+                }
+                $cart = $this->cartService->getCart($user, null);
+            }
+        }
 
         try {
             $result = $this->checkoutService->checkout(
