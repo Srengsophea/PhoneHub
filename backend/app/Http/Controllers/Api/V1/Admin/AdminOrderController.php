@@ -113,4 +113,60 @@ class AdminOrderController extends Controller
             'data' => $order->fresh(['statusHistories', 'payments']),
         ]);
     }
+
+    public function confirmPayment(Request $request, int $id): JsonResponse
+    {
+        $order = Order::findOrFail($id);
+
+        $order->update([
+            'payment_status' => 'paid',
+            'status' => 'confirmed',
+        ]);
+
+        $payment = $order->payments()->latest()->first();
+        if ($payment) {
+            $payment->update([
+                'status' => 'paid',
+                'payload' => array_merge($payment->payload ?? [], [
+                    'confirmed_by_admin_id' => $request->user()->id,
+                    'confirmed_at' => now()->toIso8601String(),
+                ]),
+            ]);
+        } else {
+            $order->payments()->create([
+                'transaction_id' => 'ADMIN-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                'provider' => $order->payment_method ?? 'khqr',
+                'amount' => $order->total_amount,
+                'currency' => 'USD',
+                'status' => 'paid',
+                'payload' => [
+                    'confirmed_by_admin_id' => $request->user()->id,
+                    'confirmed_at' => now()->toIso8601String(),
+                ],
+            ]);
+        }
+
+        if (!$order->statusHistories()->where('status', 'confirmed')->exists()) {
+            $order->statusHistories()->create([
+                'status' => 'confirmed',
+                'notes' => 'Payment verified and confirmed by Store Admin.',
+            ]);
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'payment_confirmed_manually',
+            'entity_type' => 'Order',
+            'entity_id' => $order->id,
+            'new_values' => ['payment_status' => 'paid', 'status' => 'confirmed'],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Payment for Order #{$order->order_number} has been confirmed.",
+            'data' => $order->fresh(['statusHistories', 'payments']),
+        ]);
+    }
 }

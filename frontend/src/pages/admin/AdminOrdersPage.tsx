@@ -11,6 +11,7 @@ export function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [confirmingPaymentId, setConfirmingPaymentId] = useState<number | null>(null);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -38,6 +39,19 @@ export function AdminOrdersPage() {
       loadOrders();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Could not update order status.');
+    }
+  };
+
+  const handleConfirmAdminPayment = async (orderId: number, orderNumber: string) => {
+    setConfirmingPaymentId(orderId);
+    try {
+      await api.post(`/admin/orders/${orderId}/confirm-payment`);
+      toast.success(`Payment confirmed for Order #${orderNumber}!`);
+      loadOrders();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to confirm payment.');
+    } finally {
+      setConfirmingPaymentId(null);
     }
   };
 
@@ -92,25 +106,50 @@ export function AdminOrdersPage() {
                     <p className="text-xs text-zinc-400">{o.shipping_address_snapshot?.phone || '—'}</p>
                   </td>
                   <td className="py-3.5 px-6">
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-600">
-                      {o.payment_method}
-                    </span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-700">
+                        {o.payment_method}
+                      </span>
+                      <span
+                        className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          o.payment_status === 'paid'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}
+                      >
+                        {o.payment_status === 'paid' ? 'PAID' : 'PENDING'}
+                      </span>
+                    </div>
                   </td>
                   <td className="py-3.5 px-6 font-extrabold text-zinc-950">
                     {formatPrice(o.total_amount)}
                   </td>
                   <td className="py-3.5 px-6">
-                    <select
-                      value={o.status}
-                      onChange={(e) => handleStatusChange(o.id, e.target.value as OrderStatus)}
-                      className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium outline-none focus:border-zinc-900"
-                    >
-                      {ORDER_STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {statusLabel(s)}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={o.status}
+                        onChange={(e) => handleStatusChange(o.id, e.target.value as OrderStatus)}
+                        className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium outline-none focus:border-zinc-900"
+                      >
+                        {ORDER_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {statusLabel(s)}
+                          </option>
+                        ))}
+                      </select>
+
+                      {o.payment_status !== 'paid' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleConfirmAdminPayment(o.id, o.order_number)}
+                          loading={confirmingPaymentId === o.id}
+                          className="h-7 px-2.5 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-2xs"
+                        >
+                          Confirm Paid
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

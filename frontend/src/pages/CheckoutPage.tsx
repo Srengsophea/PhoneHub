@@ -165,6 +165,15 @@ export function CheckoutPage() {
     }
   };
 
+  const handleCloseKHQRModal = async () => {
+    setKhqrModalOpen(false);
+    if (pendingOrder) {
+      await clearCart();
+      toast('Order created! Payment is pending verification.', { icon: 'ℹ️' });
+      navigate(`/orders/track/${pendingOrder.order_number}`);
+    }
+  };
+
   const handleKHQRSuccess = async () => {
     if (pendingOrder) {
       updateLocalOrderStatus(pendingOrder.order_number, 'confirmed', 'paid');
@@ -439,7 +448,7 @@ export function CheckoutPage() {
       {/* Official Bakong KHQR Payment Modal */}
       <KHQRModal
         isOpen={khqrModalOpen}
-        onClose={() => setKhqrModalOpen(false)}
+        onClose={handleCloseKHQRModal}
         onSuccess={handleKHQRSuccess}
         khqrData={khqrData}
       />

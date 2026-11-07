@@ -117,11 +117,8 @@ export function UserProfilePage() {
   const handleVerifyOrderPayment = async (orderNumber: string) => {
     setVerifyingOrder(orderNumber);
     try {
-      const res = await api.post(`/orders/${encodeURIComponent(orderNumber)}/verify-payment`, {
-        confirm: true,
-        auto_approve: true,
-      });
-      if (res.data?.paid || res.data?.success) {
+      const res = await api.post(`/orders/${encodeURIComponent(orderNumber)}/verify-payment`);
+      if (res.data?.paid) {
         toast.success(`Order #${orderNumber} payment verified successfully!`);
         setOrders((prev) =>
           prev.map((o) =>
@@ -132,7 +129,7 @@ export function UserProfilePage() {
         );
         updateLocalOrderStatus(orderNumber, 'confirmed', 'paid');
       } else {
-        toast('Payment verification is pending. Please wait a moment.', { icon: '⏳' });
+        toast.error('Payment not detected yet in Bakong account. Please complete the transfer.');
       }
     } catch {
       toast.error('Unable to verify payment status right now.');

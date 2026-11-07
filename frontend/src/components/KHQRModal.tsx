@@ -46,22 +46,18 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
     return () => clearInterval(timer);
   }, [isOpen]);
 
-  // Automated background polling for Bakong KHQR settlement
+  // Real-time verification with NBC Bakong Open API (ONLY confirms if money actually received)
   useEffect(() => {
     if (!isOpen || !khqrData || paid) return;
     let isSubscribed = true;
-    let pollCount = 0;
 
     const poll = async () => {
       try {
-        pollCount++;
-        // Auto-approve after customer completes transfer (~9-12 seconds of active scanning)
-        const shouldApprove = pollCount >= 3;
         const res = await api.post(`/orders/${encodeURIComponent(khqrData.billNumber)}/verify-payment`, {
           md5: khqrData.md5,
-          auto_approve: shouldApprove,
         });
 
+        // ONLY mark paid if Bakong API actually verified the transaction
         if (isSubscribed && res.data?.paid) {
           setPaid(true);
           setChecking(false);
@@ -72,12 +68,12 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
           }, 1200);
         }
       } catch (err) {
-        // Continue polling silently
+        // Silently continue polling
       }
     };
 
-    const initialTimer = setTimeout(poll, 3000);
-    const interval = setInterval(poll, 3000);
+    const initialTimer = setTimeout(poll, 4000);
+    const interval = setInterval(poll, 4000);
 
     return () => {
       isSubscribed = false;
@@ -109,25 +105,23 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
     setChecking(true);
     try {
       const res = await api.post(`/orders/${encodeURIComponent(khqrData.billNumber)}/verify-payment`, {
-        confirm: true,
-        auto_approve: true,
         md5: khqrData.md5,
       });
 
-      updateLocalOrderStatus(khqrData.billNumber, 'confirmed', 'paid');
-      setPaid(true);
-      toast.success('Payment verified! Your order is now confirmed.');
-      setTimeout(() => {
-        onSuccess();
-      }, 900);
+      if (res.data?.paid) {
+        updateLocalOrderStatus(khqrData.billNumber, 'confirmed', 'paid');
+        setPaid(true);
+        toast.success('Payment verified! Your order is now confirmed.');
+        setTimeout(() => {
+          onSuccess();
+        }, 900);
+        return;
+      }
+
+      // DO NOT mark paid if Bakong account has not received the transfer
+      toast.error('Payment not detected in Bakong account yet. Please scan the QR code to complete transfer.');
     } catch (err) {
-      console.error('Payment confirmation error:', err);
-      updateLocalOrderStatus(khqrData.billNumber, 'confirmed', 'paid');
-      setPaid(true);
-      toast.success('Payment verified! Your order is now confirmed.');
-      setTimeout(() => {
-        onSuccess();
-      }, 900);
+      toast.error('Unable to verify transaction with Bakong at this moment.');
     } finally {
       setChecking(false);
     }
@@ -274,7 +268,7 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
                   className="w-full bg-[#E12326] hover:bg-[#c11b1e] text-white font-bold text-sm shadow-md"
                 >
                   <ShieldCheck className="h-4 w-4 mr-2" />
-                  I Have Completed Payment
+                  Check Payment Status
                 </Button>
 
                 <div className="flex gap-2">
@@ -291,7 +285,7 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
                     onClick={onClose}
                     className="px-4 py-2 text-xs font-medium text-zinc-500 hover:text-zinc-800 transition"
                   >
-                    Cancel
+                    Close & Pay Later
                   </button>
                 </div>
               </div>

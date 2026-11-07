@@ -130,10 +130,8 @@ class OrderController extends Controller
             }
         }
 
-        // 2. Auto-approve if client signals completed transfer or Bakong verified
-        $shouldApprove = $request->boolean('auto_approve') || $request->boolean('confirm') || $isPaid;
-
-        if ($shouldApprove) {
+        // ONLY approve if NBC Bakong Open API genuinely verified the transaction
+        if ($isPaid) {
             $order->update([
                 'payment_status' => 'paid',
                 'status' => 'confirmed',
@@ -161,6 +159,7 @@ class OrderController extends Controller
                         'provider' => 'Bakong KHQR',
                         'md5' => $md5,
                         'verified_at' => now()->toIso8601String(),
+                        'bakong_transaction' => $txData,
                     ],
                 ]);
             }
@@ -168,9 +167,7 @@ class OrderController extends Controller
             if (!$order->statusHistories()->where('status', 'confirmed')->exists()) {
                 $order->statusHistories()->create([
                     'status' => 'confirmed',
-                    'notes' => $isPaid
-                        ? 'Payment verified via NBC Bakong Open API.'
-                        : 'Payment verified and approved via Bakong KHQR transfer.',
+                    'notes' => 'Payment verified via NBC Bakong Open API.',
                 ]);
             }
 
@@ -182,10 +179,11 @@ class OrderController extends Controller
             ]);
         }
 
+        // If Bakong has NOT confirmed payment yet, remain pending
         return response()->json([
             'success' => true,
             'paid' => false,
-            'message' => 'Payment verification pending. Please complete the bank transfer.',
+            'message' => 'Payment has not been received yet. Please complete the bank transfer.',
             'data' => $order,
         ]);
     }

@@ -105,16 +105,13 @@ export function OrderTrackingPage() {
     if (!order) return;
     setVerifying(true);
     try {
-      const res = await api.post(`/orders/${encodeURIComponent(order.order_number)}/verify-payment`, {
-        confirm: true,
-        auto_approve: true,
-      });
-      if (res.data?.paid || res.data?.success) {
-        toast.success('Payment verified successfully! Your order is now confirmed.');
+      const res = await api.post(`/orders/${encodeURIComponent(order.order_number)}/verify-payment`);
+      if (res.data?.paid) {
+        toast.success('Payment verified from Bakong! Your order is now confirmed.');
         setOrder((prev) => (prev ? { ...prev, payment_status: 'paid', status: 'confirmed' } : null));
         updateLocalOrderStatus(order.order_number, 'confirmed', 'paid');
       } else {
-        toast('Payment verification is pending. Please wait a moment.', { icon: '⏳' });
+        toast.error('Payment not detected in Bakong account yet. Please scan the KHQR code to pay.');
       }
     } catch {
       toast.error('Unable to verify payment status right now.');
