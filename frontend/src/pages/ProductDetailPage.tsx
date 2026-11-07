@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Heart,
   Scale,
@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Loader2,
+  Zap,
+  Check,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Button, Stars, Badge } from '@/components/ui';
@@ -22,7 +24,45 @@ import type { Product, ProductVariant, Specification, Review } from '@/types';
 import toast from 'react-hot-toast';
 import catalogData from '@/data/catalog.json';
 
+const COLOR_MAP: Record<string, string> = {
+  'natural titanium': '#9e968d',
+  'black titanium': '#323234',
+  'desert titanium': '#d4af8c',
+  'white titanium': '#f2f1ed',
+  'titanium gray': '#78716c',
+  'titanium silver': '#cbd5e1',
+  'titanium black': '#0f172a',
+  'space black': '#1c1917',
+  silver: '#e2e8f0',
+  gold: '#f5d061',
+  ultramarine: '#3b5998',
+  teal: '#0d9488',
+  pink: '#fbcfe8',
+  black: '#18181b',
+  white: '#f8fafc',
+  midnight: '#0f172a',
+  starlight: '#f1f5f9',
+  blue: '#2563eb',
+  green: '#16a34a',
+  red: '#dc2626',
+  yellow: '#eab308',
+  purple: '#9333ea',
+  orange: '#ea580c',
+  'emerald green': '#059669',
+  'phantom black': '#18181b',
+  cream: '#fef3c7',
+  lavender: '#e9d5ff',
+};
+
+function getColorHex(colorName?: string | null, hexFallback?: string | null): string {
+  if (hexFallback && hexFallback.startsWith('#')) return hexFallback;
+  if (!colorName) return '#94a3b8';
+  const clean = colorName.toLowerCase().trim();
+  return COLOR_MAP[clean] || '#94a3b8';
+}
+
 export function ProductDetailPage() {
+  const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -104,6 +144,71 @@ export function ProductDetailPage() {
     : product.sale_price ? product.base_price : null;
 
   const inStock = selectedVariant ? selectedVariant.stock > 0 : true;
+
+  const [buyingNow, setBuyingNow] = useState(false);
+
+  // Extract separate unique storage capacities and colors
+  const storages = Array.from(
+    new Set((product.variants || []).map((v) => v.storage).filter(Boolean))
+  ) as string[];
+
+  const colors = (product.variants || []).reduce((acc, v) => {
+    const colorName = v.color;
+    if (colorName && !acc.some((c) => c.name.toLowerCase() === colorName.toLowerCase())) {
+      acc.push({
+        name: colorName,
+        hex: getColorHex(colorName, v.color_hex),
+      });
+    }
+    return acc;
+  }, [] as { name: string; hex: string }[]);
+
+  const handleStorageSelect = (storage: string) => {
+    if (!product?.variants) return;
+    const currentColor = selectedVariant?.color;
+    // Prefer variant matching both current color and new storage
+    let target = product.variants.find(
+      (v) => v.storage === storage && v.color?.toLowerCase() === currentColor?.toLowerCase()
+    );
+    if (!target) {
+      target = product.variants.find((v) => v.storage === storage);
+    }
+    if (target) {
+      setSelectedVariant(target);
+    }
+  };
+
+  const handleColorSelect = (colorName: string) => {
+    if (!product?.variants) return;
+    const currentStorage = selectedVariant?.storage;
+    // Prefer variant matching both current storage and new color
+    let target = product.variants.find(
+      (v) => v.color?.toLowerCase() === colorName.toLowerCase() && v.storage === currentStorage
+    );
+    if (!target) {
+      target = product.variants.find((v) => v.color?.toLowerCase() === colorName.toLowerCase());
+    }
+    if (target) {
+      setSelectedVariant(target);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!product) return;
+    setBuyingNow(true);
+    try {
+      const res = await addToCart(product.id, selectedVariant?.id, quantity);
+      if (res.ok) {
+        navigate('/checkout');
+      } else {
+        toast.error(res.message || 'Could not proceed to checkout');
+      }
+    } catch {
+      toast.error('Could not proceed to checkout');
+    } finally {
+      setBuyingNow(false);
+    }
+  };
 
   const handleAddToCart = async () => {
     const res = await addToCart(product.id, selectedVariant?.id, quantity);
@@ -239,88 +344,189 @@ export function ProductDetailPage() {
             </p>
           )}
 
-          {/* Variant Selection (Storage / RAM / Color) */}
+          {/* Separate Selectors: Space (Storage) & Color */}
           {product.variants && product.variants.length > 0 && (
-            <div className="space-y-4">
-              <label className="text-xs font-bold uppercase tracking-wider text-zinc-900 block">
-                Select Configuration & Color
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {product.variants.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setSelectedVariant(v)}
-                    className={`p-3 rounded-2xl border text-left transition ${
-                      selectedVariant?.id === v.id
-                        ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm'
-                        : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
-                    }`}
-                  >
-                    <p className="text-xs font-semibold">{v.storage} / {v.ram}</p>
-                    <p className={`text-[11px] truncate mt-0.5 ${selectedVariant?.id === v.id ? 'text-zinc-300' : 'text-zinc-500'}`}>
-                      {v.color || 'Standard'}
-                    </p>
-                    <p className={`text-xs font-bold mt-1.5 ${selectedVariant?.id === v.id ? 'text-white' : 'text-zinc-900'}`}>
-                      {formatPrice(v.sale_price ?? v.price)}
-                    </p>
-                  </button>
-                ))}
-              </div>
+            <div className="space-y-6 pt-1">
+              {/* 1. Storage / Space Capacity Selection */}
+              {storages.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold uppercase tracking-wider text-zinc-900">
+                      Select Space (Storage)
+                    </span>
+                    <span className="font-bold text-zinc-900 bg-zinc-100 px-3 py-1 rounded-full">
+                      {selectedVariant?.storage || storages[0]}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {storages.map((storage) => {
+                      const isSelected = selectedVariant?.storage === storage;
+                      const variantForStorage = product.variants?.find((v) => v.storage === storage);
+                      return (
+                        <button
+                          key={storage}
+                          type="button"
+                          onClick={() => handleStorageSelect(storage)}
+                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                            isSelected
+                              ? 'border-zinc-950 bg-zinc-950 text-white shadow-md ring-2 ring-zinc-950/20'
+                              : 'border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 hover:bg-zinc-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-extrabold tracking-tight">{storage}</span>
+                            {isSelected && <Check className="h-4 w-4 text-white" />}
+                          </div>
+                          {variantForStorage?.ram && (
+                            <p
+                              className={`text-[11px] font-medium mt-0.5 ${
+                                isSelected ? 'text-zinc-300' : 'text-zinc-500'
+                              }`}
+                            >
+                              {variantForStorage.ram} RAM
+                            </p>
+                          )}
+                          {variantForStorage && (
+                            <p
+                              className={`text-xs font-bold mt-1.5 ${
+                                isSelected ? 'text-zinc-100' : 'text-zinc-900'
+                              }`}
+                            >
+                              {formatPrice(variantForStorage.sale_price ?? variantForStorage.price)}
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Color Selection */}
+              {colors.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold uppercase tracking-wider text-zinc-900">
+                      Select Color
+                    </span>
+                    <span className="font-bold text-zinc-900 bg-zinc-100 px-3 py-1 rounded-full">
+                      {selectedVariant?.color || colors[0]?.name}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2.5">
+                    {colors.map((c) => {
+                      const isSelected =
+                        selectedVariant?.color?.toLowerCase() === c.name.toLowerCase();
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => handleColorSelect(c.name)}
+                          className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border transition-all ${
+                            isSelected
+                              ? 'border-zinc-950 bg-zinc-950 text-white shadow-md ring-2 ring-zinc-950/20'
+                              : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 hover:bg-zinc-50'
+                          }`}
+                        >
+                          {/* Color Swatch Circle */}
+                          <span
+                            className="h-5 w-5 rounded-full border border-black/15 shadow-xs shrink-0"
+                            style={{ backgroundColor: c.hex }}
+                          />
+                          <span className="text-xs font-semibold">{c.name}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-white ml-0.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Actions: Quantity + Add to Cart + Wishlist + Compare */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-            <div className="flex items-center border border-zinc-200 rounded-xl h-12 px-3 w-full sm:w-auto justify-between sm:justify-start">
-              <span className="text-xs font-semibold text-zinc-500 mr-3">Qty:</span>
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-2 font-bold text-zinc-600 hover:text-zinc-900"
+          {/* Actions: Quantity + Add to Cart + Buy Now + Wishlist + Compare */}
+          <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Qty Selector */}
+              <div className="flex items-center border border-zinc-200 rounded-2xl h-12 px-3.5 w-full sm:w-auto justify-between sm:justify-start bg-zinc-50/50">
+                <span className="text-xs font-bold text-zinc-400 mr-3">Qty:</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="px-2 font-bold text-zinc-600 hover:text-zinc-950 transition text-base"
+                >
+                  -
+                </button>
+                <span className="px-3 font-bold text-sm text-zinc-950">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="px-2 font-bold text-zinc-600 hover:text-zinc-950 transition text-base"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Add to Cart Button */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddToCart}
+                disabled={!inStock || cartLoading || buyingNow}
+                size="lg"
+                className="w-full sm:flex-1 h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900"
               >
-                -
-              </button>
-              <span className="px-3 font-semibold text-sm text-zinc-900">{quantity}</span>
-              <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="px-2 font-bold text-zinc-600 hover:text-zinc-900"
+                <ShoppingBag className="h-4 w-4" />
+                <span>Add to Cart</span>
+              </Button>
+
+              {/* Buy Now Button */}
+              <Button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={!inStock || cartLoading || buyingNow}
+                size="lg"
+                className="w-full sm:flex-1 h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-lg transition-transform active:scale-98"
               >
-                +
-              </button>
+                {buyingNow ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Zap className="h-4 w-4 fill-amber-400 text-amber-400" />
+                )}
+                <span>Buy Now</span>
+              </Button>
+
+              {/* Wishlist & Compare Buttons */}
+              <div className="flex items-center gap-2 justify-center sm:justify-start">
+                <button
+                  type="button"
+                  onClick={() => toggleWishlist(product.id)}
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition shrink-0 ${
+                    inWishlist(product.id)
+                      ? 'border-red-200 bg-red-50 text-red-500'
+                      : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                  title="Save to Wishlist"
+                >
+                  <Heart className={`h-5 w-5 ${inWishlist(product.id) ? 'fill-current' : ''}`} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => toggleCompare(product)}
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition shrink-0 ${
+                    inCompare(product.id)
+                      ? 'border-brand-200 bg-brand-50 text-brand-600'
+                      : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                  title="Compare"
+                >
+                  <Scale className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-
-            <Button
-              onClick={handleAddToCart}
-              disabled={!inStock || cartLoading}
-              size="lg"
-              className="w-full sm:flex-1 gap-2"
-            >
-              <ShoppingBag className="h-5 w-5" />
-              <span>{inStock ? 'Add to Cart' : 'Currently Unavailable'}</span>
-            </Button>
-
-            <button
-              onClick={() => toggleWishlist(product.id)}
-              className={`flex h-12 w-12 items-center justify-center rounded-xl border transition shrink-0 ${
-                inWishlist(product.id)
-                  ? 'border-red-200 bg-red-50 text-red-500'
-                  : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-              }`}
-              title="Save to Wishlist"
-            >
-              <Heart className={`h-5 w-5 ${inWishlist(product.id) ? 'fill-current' : ''}`} />
-            </button>
-
-            <button
-              onClick={() => toggleCompare(product)}
-              className={`flex h-12 w-12 items-center justify-center rounded-xl border transition shrink-0 ${
-                inCompare(product.id)
-                  ? 'border-brand-200 bg-brand-50 text-brand-600'
-                  : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-              }`}
-              title="Compare"
-            >
-              <Scale className="h-5 w-5" />
-            </button>
           </div>
 
           {/* Warranty & Guarantees */}

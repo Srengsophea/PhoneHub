@@ -213,3 +213,4 @@ export function NavbarSearch({ className = '' }: { className?: string }) {
     </div>
   );
 }
+
