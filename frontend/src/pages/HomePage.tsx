@@ -127,18 +127,21 @@ export function HomePage() {
         <div className="container-page">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
             {/* Left Headline pitch */}
-            <div className="lg:col-span-7 space-y-7 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 shadow-2xs">
-                <Sparkles className="h-4 w-4 text-brand-600 animate-pulse" />
-                <span className="text-xs font-semibold tracking-wide text-zinc-800">
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 rounded-md border border-zinc-200/90 bg-white px-3 py-1.5 shadow-2xs">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                </span>
+                <span className="text-xs font-bold tracking-wide text-zinc-800">
                   2026 Flagship Showcase • Sealed & Certified
                 </span>
               </div>
 
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-zinc-950 leading-[1.06]">
-                Engineered for speed. <br />
-                <span className="bg-gradient-to-r from-zinc-950 via-brand-600 to-indigo-600 bg-clip-text text-transparent">
-                  Crafted for prestige.
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-zinc-950 leading-[1.1]">
+                Engineered for speed. <br className="hidden sm:inline" />
+                <span>
+                  Crafted for <span className="text-red-600">prestige.</span>
                 </span>
               </h1>
 
@@ -146,32 +149,32 @@ export function HomePage() {
                 Discover next-generation titanium designs, cinema-grade camera systems, and all-day battery efficiency from Apple, Samsung, Google, and more.
               </p>
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-1">
                 <Link to="/products">
-                  <Button size="lg" className="bg-zinc-950 text-white hover:bg-zinc-800 font-bold px-8 shadow-sm gap-2">
+                  <Button size="lg" className="bg-zinc-950 text-white hover:bg-zinc-800 font-bold px-8 shadow-sm gap-2 rounded-md">
                     Explore Collection
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link to="/brands">
-                  <Button variant="outline" size="lg" className="border-zinc-200 text-zinc-900 hover:bg-zinc-50">
+                  <Button variant="outline" size="lg" className="border-zinc-200 text-zinc-900 hover:bg-zinc-50 font-bold rounded-md px-8">
                     Browse Brands
                   </Button>
                 </Link>
               </div>
 
               {/* Trust Specs row */}
-              <div className="grid grid-cols-3 gap-6 pt-8 border-t border-zinc-100 max-w-lg mx-auto lg:mx-0 text-left">
+              <div className="grid grid-cols-3 gap-6 pt-7 border-t border-zinc-100 max-w-lg mx-auto lg:mx-0 text-left">
                 <div>
-                  <p className="text-2xl font-extrabold text-zinc-950">100%</p>
+                  <p className="text-2xl font-black text-zinc-950">100%</p>
                   <p className="text-xs text-zinc-500 font-medium mt-0.5">Sealed & Genuine</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-extrabold text-zinc-950">1-Year</p>
+                  <p className="text-2xl font-black text-zinc-950">1-Year</p>
                   <p className="text-xs text-zinc-500 font-medium mt-0.5">Official Warranty</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-extrabold text-zinc-950">Free</p>
+                  <p className="text-2xl font-black text-zinc-950">Free</p>
                   <p className="text-xs text-zinc-500 font-medium mt-0.5">Orders Over $500</p>
                 </div>
               </div>
