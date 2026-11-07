@@ -1,18 +1,42 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Search, Package, Clock, CheckCircle, Truck, MapPin, AlertCircle, Loader2 } from 'lucide-react';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import {
+  Search,
+  Package,
+  Clock,
+  CheckCircle,
+  Truck,
+  MapPin,
+  AlertCircle,
+  Loader2,
+  Printer,
+  ChevronLeft,
+  Copy,
+} from 'lucide-react';
 import api from '@/lib/api';
 import { Button, Input, Badge } from '@/components/ui';
-import { formatPrice, formatDateTime, orderStatusTone, statusLabel } from '@/lib/format';
+import { formatPrice, formatDateTime, orderStatusTone, statusLabel, productImage } from '@/lib/format';
 import type { Order } from '@/types';
 import { getLocalOrder } from '@/lib/orders';
+import { printOrderInvoice } from '@/lib/invoicePrinter';
+import toast from 'react-hot-toast';
 
 export function OrderTrackingPage() {
-  const { orderNumber } = useParams<{ orderNumber?: string }>();
+  const { orderNumber: paramNumber } = useParams<{ orderNumber?: string }>();
+  const [searchParams] = useSearchParams();
+  const queryNumber =
+    searchParams.get('order') ||
+    searchParams.get('num') ||
+    searchParams.get('tracking') ||
+    searchParams.get('orderNumber') ||
+    '';
+
+  const targetNumber = (paramNumber || queryNumber || '').trim();
+
   const navigate = useNavigate();
 
   const [inputNum, setInputNum] = useState(
-    orderNumber && orderNumber !== 'undefined' && orderNumber !== 'null' ? orderNumber : ''
+    targetNumber && targetNumber !== 'undefined' && targetNumber !== 'null' ? targetNumber : ''
   );
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +53,7 @@ export function OrderTrackingPage() {
       setLoading(true);
       setError(null);
 
-      // Check local offline orders history first
+      // 1. Check local offline orders history first
       const local = getLocalOrder(num);
       if (local) {
         setOrder(local);
@@ -37,35 +61,55 @@ export function OrderTrackingPage() {
         return;
       }
 
+      // 2. Query track API endpoint
       try {
         const { data } = await api.get(`/orders/track/${encodeURIComponent(num)}`);
         if (data?.data) {
           setOrder(data.data);
-        } else {
-          setError(`Order #${num} was not found. Please check your tracking number.`);
+          setLoading(false);
+          return;
         }
-      } catch (err: any) {
-        setOrder(null);
-        setError(err.response?.data?.message || `Order #${num} was not found. Please double-check your tracking ID.`);
-      } finally {
-        setLoading(false);
-      }
+      } catch {}
+
+      // 3. Fallback: Search all user orders
+      try {
+        const { data } = await api.get('/orders');
+        if (Array.isArray(data?.data)) {
+          const matched = data.data.find(
+            (o: Order) => o.order_number?.toLowerCase() === num.toLowerCase()
+          );
+          if (matched) {
+            setOrder(matched);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {}
+
+      setOrder(null);
+      setError(`Order #${num} was not found. Please double-check your tracking ID.`);
+      setLoading(false);
     }
 
-    if (orderNumber && orderNumber !== 'undefined' && orderNumber !== 'null') {
-      setInputNum(orderNumber);
-      track(orderNumber);
+    if (targetNumber && targetNumber !== 'undefined' && targetNumber !== 'null') {
+      setInputNum(targetNumber);
+      track(targetNumber);
     } else {
       setInputNum('');
       setOrder(null);
       setError(null);
     }
-  }, [orderNumber]);
+  }, [targetNumber]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputNum.trim()) return;
     navigate(`/orders/track/${encodeURIComponent(inputNum.trim())}`);
+  };
+
+  const copyOrderNumber = (num: string) => {
+    navigator.clipboard.writeText(num);
+    toast.success(`Copied ${num} to clipboard`);
   };
 
   const statusSteps = [
@@ -84,129 +128,206 @@ export function OrderTrackingPage() {
 
   return (
     <div className="container-page py-12 max-w-4xl space-y-10">
+      {/* Search Header */}
       <div className="text-center space-y-3">
-        <h1 className="text-3xl font-extrabold text-zinc-950 tracking-tight">
+        <div className="inline-flex items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1 shadow-2xs">
+          <Truck className="h-3.5 w-3.5 text-zinc-900" />
+          <span className="text-xs font-bold uppercase tracking-wider text-zinc-800">
+            Real-Time Logistics Tracking
+          </span>
+        </div>
+
+        <h1 className="text-3xl font-black text-zinc-950 tracking-tight">
           Track Your Order
         </h1>
         <p className="text-sm text-zinc-500 max-w-md mx-auto">
           Enter your PhoneHub tracking number (e.g. PH-2026-...) to see real-time dispatch and delivery progress.
         </p>
 
-        <form onSubmit={handleSubmit} className="flex gap-2 max-w-md mx-auto pt-4">
+        <form onSubmit={handleSubmit} className="flex gap-2 max-w-md mx-auto pt-3">
           <Input
             value={inputNum}
             onChange={(e) => setInputNum(e.target.value)}
-            placeholder="Enter tracking number..."
+            placeholder="Enter tracking number (e.g. PH-20261107-...)"
             className="flex-1"
           />
-          <Button type="submit" loading={loading}>
+          <Button type="submit" loading={loading} className="rounded-md font-bold bg-zinc-950 hover:bg-zinc-800">
             Track
           </Button>
         </form>
       </div>
 
       {loading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+          <p className="text-xs font-bold text-zinc-600">Retrieving tracking records...</p>
         </div>
       )}
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm font-medium text-red-600">
-          <AlertCircle className="h-6 w-6 mx-auto mb-2 text-red-500" />
-          {error}
+        <div className="rounded-md border border-red-200 bg-red-50 p-6 text-center text-sm font-medium text-red-600 space-y-2">
+          <AlertCircle className="h-6 w-6 mx-auto text-red-500" />
+          <p className="font-bold">{error}</p>
+          <div className="pt-2">
+            <Link to="/profile">
+              <Button variant="outline" size="sm" className="rounded-md text-xs font-bold">
+                Go to Order History
+              </Button>
+            </Link>
+          </div>
         </div>
       )}
 
       {order && !loading && (
-        <div className="rounded-3xl border border-zinc-200/80 bg-white p-6 sm:p-8 space-y-8 shadow-soft">
+        <div className="rounded-md border border-zinc-200 bg-white p-6 sm:p-8 space-y-8 shadow-xs">
           {/* Header Info */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-zinc-100 gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">Order Number</p>
-              <h2 className="text-xl font-extrabold text-zinc-900 mt-0.5">{order.order_number}</h2>
-              <p className="text-xs text-zinc-500 mt-1">Placed on {formatDateTime(order.created_at)}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <h2 className="text-2xl font-black font-mono text-zinc-950 tracking-tight">
+                  {order.order_number}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => copyOrderNumber(order.order_number)}
+                  className="p-1 text-zinc-400 hover:text-zinc-900 rounded transition"
+                  title="Copy Tracking Number"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">
+                Placed on {formatDateTime(order.created_at)}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => printOrderInvoice(order)}
+                className="gap-1.5 rounded-md text-xs font-bold border-zinc-300 hover:border-zinc-950 hover:bg-zinc-50"
+              >
+                <Printer className="h-3.5 w-3.5 text-zinc-700" />
+                <span>Print Invoice (PDF)</span>
+              </Button>
               <Badge tone={orderStatusTone(order.status)} dot>
                 {statusLabel(order.status)}
               </Badge>
             </div>
           </div>
 
-          {/* Stepper */}
-          <div className="grid grid-cols-4 gap-2 text-center py-4">
-            {statusSteps.map((s, idx) => {
-              const st = getStepStatus(s.key, order.status);
-              return (
-                <div key={s.key} className="flex flex-col items-center">
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold transition ${
-                      st === 'completed'
-                        ? 'bg-zinc-900 text-white'
-                        : 'bg-zinc-100 text-zinc-400 border border-zinc-200'
-                    }`}
-                  >
-                    {st === 'completed' ? <CheckCircle className="h-5 w-5" /> : idx + 1}
+          {/* Stepper Progress */}
+          <div className="py-4">
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {statusSteps.map((s, idx) => {
+                const st = getStepStatus(s.key, order.status);
+                return (
+                  <div key={s.key} className="flex flex-col items-center">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold transition shadow-2xs ${
+                        st === 'completed'
+                          ? 'bg-zinc-950 text-white'
+                          : 'bg-zinc-100 text-zinc-400 border border-zinc-200'
+                      }`}
+                    >
+                      {st === 'completed' ? <CheckCircle className="h-5 w-5" /> : idx + 1}
+                    </div>
+                    <span
+                      className={`text-xs mt-2.5 font-bold uppercase tracking-wider ${
+                        st === 'completed' ? 'text-zinc-950' : 'text-zinc-400'
+                      }`}
+                    >
+                      {s.label}
+                    </span>
                   </div>
-                  <span className={`text-xs mt-2 font-medium ${st === 'completed' ? 'text-zinc-900' : 'text-zinc-400'}`}>
-                    {s.label}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           {/* Order Details & Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-zinc-100">
+            {/* Items Column */}
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
                 Items in Package
               </h4>
               <div className="space-y-3">
-                {order.items?.map((it) => (
-                  <div key={it.id} className="flex justify-between text-sm">
-                    <div>
-                      <p className="font-semibold text-zinc-900">{it.product_name}</p>
-                      <p className="text-xs text-zinc-500">Qty: {it.quantity}</p>
+                {order.items && order.items.length > 0 ? (
+                  order.items.map((it, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs gap-3 p-3 rounded-md bg-zinc-50/70 border border-zinc-100">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 shrink-0 rounded-md bg-white border border-zinc-200 flex items-center justify-center p-1">
+                          <Package className="h-5 w-5 text-zinc-400" />
+                        </div>
+                        <div className="truncate">
+                          <p className="font-bold text-zinc-950 truncate">{it.product_name}</p>
+                          {it.variant_name && (
+                            <p className="text-[11px] text-zinc-500 truncate">{it.variant_name}</p>
+                          )}
+                          <p className="text-[11px] text-zinc-500">Qty: {it.quantity}</p>
+                        </div>
+                      </div>
+                      <span className="font-black text-zinc-950 shrink-0">
+                        {formatPrice(it.subtotal ?? Number(it.unit_price) * it.quantity)}
+                      </span>
                     </div>
-                    <span className="font-bold text-zinc-900">{formatPrice(it.subtotal)}</span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-xs text-zinc-500">Standard Sealed Package</p>
+                )}
               </div>
             </div>
 
-            <div className="rounded-2xl bg-zinc-50 p-4 space-y-2 text-xs">
-              <h4 className="font-bold uppercase tracking-wider text-zinc-400 mb-2">Delivery Summary</h4>
+            {/* Delivery & Payment Summary */}
+            <div className="rounded-md bg-zinc-50 p-5 space-y-3 text-xs border border-zinc-200/80">
+              <h4 className="font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                Logistics & Dispatch Details
+              </h4>
               <div className="flex justify-between text-zinc-600">
                 <span>Shipping Method:</span>
-                <span className="font-medium text-zinc-900">{order.shipping_method || 'Express Dispatch'}</span>
+                <span className="font-bold text-zinc-950">{order.shipping_method || 'Express Local Dispatch'}</span>
               </div>
               <div className="flex justify-between text-zinc-600">
                 <span>Payment Method:</span>
-                <span className="font-medium text-zinc-900 uppercase">
-                  {order.payment_method === 'khqr' ? 'Bakong KHQR' : order.payment_method}
+                <span className="font-bold text-zinc-950 uppercase">
+                  {order.payment_method?.toUpperCase().includes('KHQR') || order.payment_method === 'bank_transfer'
+                    ? 'NBC Bakong KHQR'
+                    : order.payment_method === 'cod'
+                    ? 'Cash on Delivery (COD)'
+                    : 'Credit / Debit Card'}
                 </span>
               </div>
               <div className="flex justify-between text-zinc-600 items-center">
                 <span>Payment Status:</span>
                 <span
-                  className={`font-bold px-2 py-0.5 rounded-full text-[10px] uppercase ${
-                    order.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  className={`font-bold px-2 py-0.5 rounded-sm text-[10px] uppercase ${
+                    order.payment_status === 'paid'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
                   }`}
                 >
-                  {order.payment_status === 'paid' ? 'Paid (Bakong KHQR)' : order.payment_status}
+                  {order.payment_status === 'paid' ? 'Paid / Settled' : 'Payment Pending'}
                 </span>
               </div>
-              <div className="flex justify-between text-zinc-600 pt-2 border-t border-zinc-200">
-                <span className="font-semibold text-zinc-900">Total Billed:</span>
-                <span className="font-bold text-sm text-zinc-900">{formatPrice(order.total_amount)}</span>
+              <div className="flex justify-between text-zinc-600 pt-3 border-t border-zinc-200">
+                <span className="font-bold text-zinc-900">Total Billed:</span>
+                <span className="font-black text-base text-zinc-950">{formatPrice(order.total_amount)}</span>
               </div>
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-zinc-100 flex items-center justify-between">
+            <Link to="/profile" className="text-xs font-bold text-zinc-600 hover:text-zinc-950 inline-flex items-center gap-1">
+              <ChevronLeft className="h-4 w-4" />
+              <span>Back to Profile & Orders</span>
+            </Link>
           </div>
         </div>
       )}
     </div>
   );
 }
-

@@ -380,3 +380,4 @@ export function printOrderInvoice(order: Order): void {
     setTimeout(triggerPrint, 150);
   }
 }
+

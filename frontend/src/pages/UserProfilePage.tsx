@@ -466,9 +466,13 @@ export function UserProfilePage() {
                           <div className="flex items-center gap-3">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm font-black text-zinc-950">
+                                <Link
+                                  to={`/orders/track/${encodeURIComponent(o.order_number)}`}
+                                  className="font-mono text-sm font-black text-zinc-950 hover:underline hover:text-red-600 transition"
+                                  title="Click to track order"
+                                >
                                   {o.order_number}
-                                </span>
+                                </Link>
                                 <button
                                   type="button"
                                   onClick={() => copyOrderNumber(o.order_number)}
@@ -554,7 +558,7 @@ export function UserProfilePage() {
                             </Button>
 
                             {/* TRACK ORDER BUTTON */}
-                            <Link to={`/orders/track?order=${encodeURIComponent(o.order_number)}`}>
+                            <Link to={`/orders/track/${encodeURIComponent(o.order_number)}`}>
                               <Button
                                 type="button"
                                 size="sm"
