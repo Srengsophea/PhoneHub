@@ -345,15 +345,13 @@ export function ProductDetailPage() {
 
           {/* Separate Selectors: Space (Storage) & Color */}
           {product.variants && product.variants.length > 0 && (
-            <div className="space-y-6 pt-1">
+            <div className="space-y-5 pt-1">
               {/* 1. Storage / Space Capacity Selection */}
               {storages.length > 0 && (
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold uppercase tracking-wider text-zinc-900">
-                      Select Space (Storage)
-                    </span>
-                    <span className="font-bold text-zinc-900 bg-zinc-100 px-3 py-1 rounded-full">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-zinc-900">
+                    <span>Space (Storage):</span>
+                    <span className="text-zinc-500 font-medium normal-case tracking-normal">
                       {selectedVariant?.storage || storages[0]}
                     </span>
                   </div>
@@ -369,29 +367,25 @@ export function ProductDetailPage() {
                           onClick={() => handleStorageSelect(storage)}
                           className={`p-3.5 rounded-2xl border text-left transition-all ${
                             isSelected
-                              ? 'border-zinc-950 bg-zinc-950 text-white shadow-md ring-2 ring-zinc-950/20'
-                              : 'border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 hover:bg-zinc-50'
+                              ? 'border-2 border-zinc-950 bg-zinc-50/70 shadow-xs ring-1 ring-zinc-950/5'
+                              : 'border border-zinc-200/90 bg-white text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50/60'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-extrabold tracking-tight">{storage}</span>
-                            {isSelected && <Check className="h-4 w-4 text-white" />}
+                            <span className="text-sm font-extrabold text-zinc-950 tracking-tight">{storage}</span>
+                            {isSelected && (
+                              <span className="h-4 w-4 rounded-full bg-zinc-950 text-white flex items-center justify-center">
+                                <Check className="h-2.5 w-2.5 stroke-[3]" />
+                              </span>
+                            )}
                           </div>
                           {variantForStorage?.ram && (
-                            <p
-                              className={`text-[11px] font-medium mt-0.5 ${
-                                isSelected ? 'text-zinc-300' : 'text-zinc-500'
-                              }`}
-                            >
+                            <p className="text-[11px] font-medium text-zinc-500 mt-0.5">
                               {variantForStorage.ram} RAM
                             </p>
                           )}
                           {variantForStorage && (
-                            <p
-                              className={`text-xs font-bold mt-1.5 ${
-                                isSelected ? 'text-zinc-100' : 'text-zinc-900'
-                              }`}
-                            >
+                            <p className="text-xs font-bold text-zinc-900 mt-1.5">
                               {formatPrice(variantForStorage.sale_price ?? variantForStorage.price)}
                             </p>
                           )}
@@ -405,11 +399,9 @@ export function ProductDetailPage() {
               {/* 2. Color Selection */}
               {colors.length > 0 && (
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold uppercase tracking-wider text-zinc-900">
-                      Select Color
-                    </span>
-                    <span className="font-bold text-zinc-900 bg-zinc-100 px-3 py-1 rounded-full">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-zinc-900">
+                    <span>Color:</span>
+                    <span className="text-zinc-500 font-medium normal-case tracking-normal">
                       {selectedVariant?.color || colors[0]?.name}
                     </span>
                   </div>
@@ -423,19 +415,19 @@ export function ProductDetailPage() {
                           key={c.name}
                           type="button"
                           onClick={() => handleColorSelect(c.name)}
-                          className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border transition-all ${
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-full border transition-all ${
                             isSelected
-                              ? 'border-zinc-950 bg-zinc-950 text-white shadow-md ring-2 ring-zinc-950/20'
-                              : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 hover:bg-zinc-50'
+                              ? 'border-2 border-zinc-950 bg-zinc-50/80 text-zinc-950 font-bold shadow-xs'
+                              : 'border border-zinc-200/90 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50/60'
                           }`}
                         >
                           {/* Color Swatch Circle */}
                           <span
-                            className="h-5 w-5 rounded-full border border-black/15 shadow-xs shrink-0"
+                            className="h-4 w-4 rounded-full border border-black/15 shadow-xs shrink-0"
                             style={{ backgroundColor: c.hex }}
                           />
-                          <span className="text-xs font-semibold">{c.name}</span>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-white ml-0.5" />}
+                          <span className="text-xs">{c.name}</span>
+                          {isSelected && <Check className="h-3 w-3 text-zinc-950 stroke-[3] ml-0.5" />}
                         </button>
                       );
                     })}
