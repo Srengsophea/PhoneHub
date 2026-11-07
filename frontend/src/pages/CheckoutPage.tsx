@@ -100,7 +100,7 @@ export function CheckoutPage() {
         items: payloadItems,
       });
 
-      const order = data.data?.order || data.data;
+      const order = data?.data?.order || data?.data?.data?.order || data?.data || {};
       const orderNumber =
         order?.order_number || ('PH-' + new Date().getFullYear() + '-' + Math.floor(100000 + Math.random() * 900000));
       const fullOrder = { ...order, order_number: orderNumber };
@@ -116,7 +116,8 @@ export function CheckoutPage() {
         toast.success('Order placed successfully!');
         navigate(`/orders/track/${orderNumber}`);
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Checkout error detail:', err);
       toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
