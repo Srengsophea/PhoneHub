@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { Printer, Download, X, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Printer, X, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { formatPrice, formatDateTime } from '@/lib/format';
+import { printOrderInvoice } from '@/lib/invoicePrinter';
 import type { Order } from '@/types';
 
 interface InvoiceModalProps {
@@ -16,7 +17,7 @@ export function InvoiceModal({ order, open, onClose }: InvoiceModalProps) {
   if (!open || !order) return null;
 
   const handlePrint = () => {
-    window.print();
+    printOrderInvoice(order);
   };
 
   const invoiceNumber = `INV-${order.order_number}`;
@@ -30,32 +31,6 @@ export function InvoiceModal({ order, open, onClose }: InvoiceModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      {/* Print Styles injected for pixel-perfect PDF export */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #invoice-print-area, #invoice-print-area * {
-            visibility: visible;
-          }
-          #invoice-print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 24px !important;
-            box-shadow: none !important;
-            border: none !important;
-            background: white !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
-
       <div className="relative w-full max-w-3xl my-8 bg-white rounded-md shadow-2xl border border-zinc-200 overflow-hidden">
         {/* Top Control Bar (Hidden when printing) */}
         <div className="no-print flex items-center justify-between px-6 py-3.5 border-b border-zinc-200 bg-zinc-50">

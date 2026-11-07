@@ -97,3 +97,4 @@ export async function setDefaultAddress(id: number): Promise<boolean> {
   saveLocalAddresses(current);
   return true;
 }
+
