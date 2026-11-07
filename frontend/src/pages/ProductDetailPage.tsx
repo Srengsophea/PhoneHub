@@ -101,8 +101,16 @@ export function ProductDetailPage() {
             setSelectedVariant(firstVar);
             setSelectedStorage(firstVar.storage || '');
             setSelectedColor(firstVar.color || '');
+
+            const initialColorImg =
+              (firstVar as any).image_url ||
+              firstVar.images?.[0]?.image_path ||
+              p.images?.find((img) => img.variant_id === firstVar.id)?.image_path ||
+              null;
+            setSelectedImage(initialColorImg ? imageUrl(initialColorImg) : productImage(p));
+          } else {
+            setSelectedImage(productImage(p));
           }
-          setSelectedImage(productImage(p));
         }
       } catch (err) {
         console.error(err);
@@ -114,8 +122,16 @@ export function ProductDetailPage() {
             setSelectedVariant(firstVar);
             setSelectedStorage(firstVar.storage || '');
             setSelectedColor(firstVar.color || '');
+
+            const initialColorImg =
+              (firstVar as any).image_url ||
+              firstVar.images?.[0]?.image_path ||
+              fallback.images?.find((img) => img.variant_id === firstVar.id)?.image_path ||
+              null;
+            setSelectedImage(initialColorImg ? imageUrl(initialColorImg) : productImage(fallback));
+          } else {
+            setSelectedImage(productImage(fallback));
           }
-          setSelectedImage(productImage(fallback));
         }
       } finally {
         setLoading(false);
@@ -152,13 +168,54 @@ export function ProductDetailPage() {
   const colors = (product.variants || []).reduce((acc, v) => {
     const colorName = v.color;
     if (colorName && !acc.some((c) => c.name.toLowerCase() === colorName.toLowerCase())) {
+      const colorImg =
+        (v as any).image_url ||
+        v.images?.[0]?.image_path ||
+        product.images?.find((img) => img.variant_id === v.id)?.image_path ||
+        (product as any).color_images?.[colorName.toLowerCase()] ||
+        null;
+
       acc.push({
         name: colorName,
         hex: getColorHex(colorName, v.color_hex),
+        image: colorImg,
+        variantId: v.id,
       });
     }
     return acc;
-  }, [] as { name: string; hex: string }[]);
+  }, [] as { name: string; hex: string; image?: string | null; variantId?: number }[]);
+
+  // Collect all gallery images: primary image, gallery images, and color variant images
+  const galleryImages = (() => {
+    const list: { id: string | number; url: string; label?: string; colorName?: string }[] = [];
+    const seen = new Set<string>();
+
+    const addImg = (rawUrl?: string | null, label?: string, colorName?: string) => {
+      if (!rawUrl) return;
+      const resolved = imageUrl(rawUrl);
+      if (!seen.has(resolved)) {
+        seen.add(resolved);
+        list.push({ id: resolved, url: resolved, label, colorName });
+      }
+    };
+
+    // Primary/main product image
+    addImg(productImage(product), 'Default');
+
+    // General product images
+    (product.images || []).forEach((img, idx) => {
+      addImg(img.image_path, `View ${idx + 1}`);
+    });
+
+    // Color variant images
+    colors.forEach((c) => {
+      if (c.image) {
+        addImg(c.image, c.name, c.name);
+      }
+    });
+
+    return list;
+  })();
 
   // Find exact matching variant for the currently selected storage and color
   const activeVariant =
@@ -203,6 +260,19 @@ export function ProductDetailPage() {
           (v) => v.color?.toLowerCase() === colorName.toLowerCase() && v.storage === currentStorage
         ) || product.variants.find((v) => v.color?.toLowerCase() === colorName.toLowerCase());
       if (match) setSelectedVariant(match);
+    }
+
+    // Automatically switch main image to the selected color's imported image
+    const matchingColorObj = colors.find((c) => c.name.toLowerCase() === colorName.toLowerCase());
+    const variantImg =
+      matchingColorObj?.image ||
+      (product.variants?.find((v) => v.color?.toLowerCase() === colorName.toLowerCase()) as any)?.image_url ||
+      product.images?.find(
+        (img) => img.variant_id && product.variants?.some((v) => v.id === img.variant_id && v.color?.toLowerCase() === colorName.toLowerCase())
+      )?.image_path;
+
+    if (variantImg) {
+      setSelectedImage(imageUrl(variantImg));
     }
   };
 
@@ -290,25 +360,40 @@ export function ProductDetailPage() {
           </div>
 
           {/* Thumbnails */}
-          {product.images && product.images.length > 1 && (
+          {galleryImages.length > 1 && (
             <div className="flex items-center gap-3 overflow-x-auto pb-2">
-              {product.images.map((img) => (
-                <button
-                  key={img.id}
-                  onClick={() => setSelectedImage(imageUrl(img.image_path))}
-                  className={`h-20 w-20 shrink-0 rounded-2xl border p-2 bg-white transition ${
-                    selectedImage === imageUrl(img.image_path)
-                      ? 'border-zinc-900 ring-2 ring-zinc-900/10'
-                      : 'border-zinc-200 hover:border-zinc-400'
-                  }`}
-                >
-                  <img
-                    src={imageUrl(img.image_path)}
-                    alt=""
-                    className="h-full w-full object-contain"
-                  />
-                </button>
-              ))}
+              {galleryImages.map((img) => {
+                const isActive = selectedImage === img.url;
+                return (
+                  <button
+                    key={img.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedImage(img.url);
+                      if (img.colorName) {
+                        handleColorSelect(img.colorName);
+                      }
+                    }}
+                    title={img.label}
+                    className={`relative h-20 w-20 shrink-0 rounded-2xl border p-2 bg-white transition group ${
+                      isActive
+                        ? 'border-zinc-900 ring-2 ring-zinc-900/10'
+                        : 'border-zinc-200 hover:border-zinc-400'
+                    }`}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.label || ''}
+                      className="h-full w-full object-contain"
+                    />
+                    {img.colorName && (
+                      <span className="absolute bottom-1 right-1 text-[8px] font-bold uppercase tracking-tight bg-zinc-900/90 text-white px-1 py-0.5 rounded-xs max-w-[90%] truncate">
+                        {img.colorName}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

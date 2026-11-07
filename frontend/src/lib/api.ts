@@ -30,6 +30,21 @@ api.interceptors.request.use((config) => {
 });
 
 // Resilient Offline Fallback (Guarantees Storefront Works on Vercel Without a Backend)
+function getCustomProducts(): any[] {
+  try {
+    const raw = localStorage.getItem('phonehub_custom_products');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomProducts(list: any[]): void {
+  try {
+    localStorage.setItem('phonehub_custom_products', JSON.stringify(list));
+  } catch {}
+}
+
 function handleOfflineFallback(url: string, method: string = 'get', data?: any) {
   const cleanUrl = url.replace(/^\/?api\/v1\/?/, '').replace(/^\//, '');
   const [endpoint, queryString] = cleanUrl.split('?');
@@ -56,6 +71,11 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
 
   if (endpoint.startsWith('products/')) {
     const slug = endpoint.replace('products/', '');
+    const custom = getCustomProducts();
+    const foundCustom = custom.find((p) => p.slug === slug || String(p.id) === slug);
+    if (foundCustom) {
+      return { data: { data: foundCustom as unknown as Product } };
+    }
     const found = (catalogData.products as any[]).find((p) => p.slug === slug);
     if (found) {
       return { data: { data: found as unknown as Product } };
@@ -63,7 +83,8 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
   }
 
   if (endpoint === 'products') {
-    let prods = [...(catalogData.products as any[])];
+    const custom = getCustomProducts();
+    let prods = [...custom, ...(catalogData.products as any[])];
 
     const brand = params.get('brand');
     if (brand) prods = prods.filter((p) => p.brand?.slug === brand);
@@ -417,6 +438,139 @@ function handleOfflineFallback(url: string, method: string = 'get', data?: any) 
           total: orders.length,
           per_page: 15,
         },
+      },
+    };
+  }
+
+  if (endpoint === 'admin/products' && method.toLowerCase() === 'post') {
+    const custom = getCustomProducts();
+    const brand = (catalogData.brands as any[])?.find((b) => b.id === Number(data?.brand_id)) || {
+      id: Number(data?.brand_id) || 1,
+      name: 'Brand',
+      slug: 'brand',
+    };
+    const category = (catalogData.categories as any[])?.find((c) => c.id === Number(data?.category_id)) || {
+      id: Number(data?.category_id) || 1,
+      name: 'Smartphones',
+      slug: 'smartphones',
+    };
+    const slug =
+      (data?.name || 'phone')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') +
+      '-' +
+      Math.random().toString(36).slice(2, 6);
+
+    const newProduct = {
+      id: Date.now(),
+      name: data?.name || 'New Smartphone',
+      slug,
+      brand_id: Number(data?.brand_id) || 1,
+      brand,
+      category_id: Number(data?.category_id) || 1,
+      category,
+      sku: data?.sku || 'SKU-' + Date.now().toString(36).toUpperCase(),
+      base_price: Number(data?.base_price) || 999,
+      sale_price: data?.sale_price ? Number(data.sale_price) : null,
+      short_description: data?.short_description || '',
+      warranty_info: data?.warranty_info || '1-Year Official Warranty',
+      is_featured: Boolean(data?.is_featured),
+      is_bestseller: Boolean(data?.is_bestseller),
+      is_active: true,
+      image_url: data?.image_url || data?.images?.[0]?.image_path || null,
+      images: data?.images || [],
+      variants: data?.variants || [],
+      specifications: data?.specifications || [],
+      created_at: new Date().toISOString(),
+    };
+
+    custom.unshift(newProduct);
+    saveCustomProducts(custom);
+
+    return {
+      data: {
+        success: true,
+        message: 'Product created successfully.',
+        data: newProduct,
+      },
+    };
+  }
+
+  if (endpoint.startsWith('admin/products/') && method.toLowerCase() === 'put') {
+    const id = Number(endpoint.replace('admin/products/', ''));
+    const custom = getCustomProducts();
+    const idx = custom.findIndex((p) => p.id === id);
+    if (idx >= 0) {
+      custom[idx] = {
+        ...custom[idx],
+        ...data,
+        base_price: Number(data?.base_price ?? custom[idx].base_price),
+        sale_price: data?.sale_price ? Number(data.sale_price) : null,
+        image_url: data?.image_url ?? custom[idx].image_url,
+        images: data?.images ?? custom[idx].images,
+        variants: data?.variants ?? custom[idx].variants,
+      };
+      saveCustomProducts(custom);
+      return {
+        data: {
+          success: true,
+          message: 'Product updated successfully.',
+          data: custom[idx],
+        },
+      };
+    }
+  }
+
+  if (endpoint.startsWith('admin/products/') && method.toLowerCase() === 'delete') {
+    const id = Number(endpoint.replace('admin/products/', ''));
+    const custom = getCustomProducts();
+    const filtered = custom.filter((p) => p.id !== id);
+    saveCustomProducts(filtered);
+    return {
+      data: {
+        success: true,
+        message: 'Product deleted successfully.',
+      },
+    };
+  }
+
+  if (endpoint.startsWith('admin/products') && method.toLowerCase() === 'get') {
+    const custom = getCustomProducts();
+    let prods = [...custom, ...(catalogData.products as any[])];
+    const search = params.get('search');
+    if (search) {
+      const q = search.toLowerCase();
+      prods = prods.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.sku?.toLowerCase().includes(q) ||
+          p.brand?.name?.toLowerCase().includes(q)
+      );
+    }
+    const page = parseInt(params.get('page') || '1', 10);
+    const perPage = 15;
+    const start = (page - 1) * perPage;
+    return {
+      data: {
+        data: prods.slice(start, start + perPage),
+        meta: {
+          current_page: page,
+          last_page: Math.ceil(prods.length / perPage),
+          total: prods.length,
+          per_page: perPage,
+        },
+      },
+    };
+  }
+
+  if (endpoint === 'admin/products/upload-image') {
+    return {
+      data: {
+        success: true,
+        message: 'Image uploaded successfully.',
+        url: data?.image || data?.dataUrl || '/images/placeholder-phone.svg',
+        image_path: data?.image || data?.dataUrl || '/images/placeholder-phone.svg',
       },
     };
   }

@@ -56,11 +56,24 @@ export const imageUrl = (path?: string | null): string => {
 
 export const productImage = (p?: Partial<Product> | null): string => {
   if (!p) return imageUrl(null);
+
+  // 1. Explicit primary image or image gallery
+  const primary = p.primary_image ?? p.images?.find((i: ProductImage) => i.is_primary) ?? p.images?.[0];
+  if (primary?.image_path) {
+    return imageUrl(primary.image_path);
+  }
+
+  // 2. Direct image_url property (custom uploaded or mock product)
+  if ((p as any).image_url) {
+    return imageUrl((p as any).image_url);
+  }
+
+  // 3. Fallback to bundled catalog slug image
   if (p.slug) {
     return `/images/products/${p.slug}.png`;
   }
-  const primary = p.primary_image ?? p.images?.find((i: ProductImage) => i.is_primary) ?? p.images?.[0];
-  return imageUrl(primary?.image_path);
+
+  return imageUrl(null);
 };
 
 /** Effective prices for a product (or the cheapest active variant). */
