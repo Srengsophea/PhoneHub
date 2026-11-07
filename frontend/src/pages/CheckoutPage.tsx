@@ -13,8 +13,13 @@ import toast from 'react-hot-toast';
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, clear: clearCart } = useCart();
+  const { cart, clear: clearCart, setOpen: setCartOpen } = useCart();
   const { user } = useAuth();
+
+  useEffect(() => {
+    // Ensure the shopping cart drawer is always closed on the checkout page
+    setCartOpen(false);
+  }, [setCartOpen]);
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'khqr' | 'cod' | 'stripe'>('khqr');

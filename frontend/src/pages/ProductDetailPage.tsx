@@ -80,7 +80,7 @@ export function ProductDetailPage() {
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewComment, setReviewComment] = useState('');
 
-  const { add: addToCart, loading: cartLoading } = useCart();
+  const { add: addToCart, setOpen: setCartOpen, loading: cartLoading } = useCart();
   const { toggle: toggleWishlist, has: inWishlist } = useWishlist();
   const { toggle: toggleCompare, has: inCompare } = useCompare();
 
@@ -210,8 +210,10 @@ export function ProductDetailPage() {
     if (!product) return;
     setBuyingNow(true);
     try {
-      const res = await addToCart(product.id, activeVariant?.id, quantity);
+      // Pass openDrawer = false so shopping cart drawer does NOT open on Buy Now
+      const res = await addToCart(product.id, activeVariant?.id, quantity, false);
       if (res.ok) {
+        setCartOpen(false);
         navigate('/checkout');
       } else {
         toast.error(res.message || 'Could not proceed to checkout');

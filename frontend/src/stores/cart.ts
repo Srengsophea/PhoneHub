@@ -39,7 +39,7 @@ interface CartState {
   setOpen: (open: boolean) => void;
   count: () => number;
   fetch: () => Promise<void>;
-  add: (productId: number, variantId?: number | null | undefined, quantity?: number) => Promise<CartResult>;
+  add: (productId: number, variantId?: number | null | undefined, quantity?: number, openDrawer?: boolean) => Promise<CartResult>;
   update: (itemId: number, quantity: number) => Promise<CartResult>;
   remove: (itemId: number) => Promise<CartResult>;
   clear: () => Promise<void>;
@@ -105,8 +105,8 @@ export const useCart = create<CartState>((set, get) => {
         set({ cart: getInitialCart(), loading: false });
       }
     },
-    add: (productId, variantId = null, quantity = 1) =>
-      run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), true),
+    add: (productId, variantId = null, quantity = 1, openDrawer = true) =>
+      run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), openDrawer),
     update: (itemId, quantity) =>
       quantity <= 0 ? get().remove(itemId) : run(() => api.put(`/cart/items/${itemId}`, { quantity })),
     remove: (itemId) => run(() => api.delete(`/cart/items/${itemId}`)),
