@@ -19,7 +19,7 @@ import { useCart } from '@/stores/cart';
 import { useWishlist } from '@/stores/wishlist';
 import { useCompare } from '@/stores/compare';
 import { isStaff } from '@/lib/format';
-import { SearchModal } from './SearchModal';
+import { NavbarSearch } from './NavbarSearch';
 import { CartDrawer } from './CartDrawer';
 import { AuthModal } from './AuthModal';
 
@@ -30,7 +30,7 @@ export function Navbar() {
   const { ids: wishlistIds } = useWishlist();
   const { items: compareItems } = useCompare();
 
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
 
@@ -78,24 +78,15 @@ export function Navbar() {
             </nav>
           </div>
 
-          {/* Search Trigger */}
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="hidden sm:flex items-center gap-3 w-64 lg:w-80 rounded-xl border border-zinc-200 bg-zinc-50/70 px-3.5 py-2 text-sm text-zinc-400 hover:border-zinc-300 hover:bg-zinc-100/70 transition"
-          >
-            <Search className="h-4 w-4 text-zinc-400" />
-            <span className="flex-1 text-left">Search phones, brands...</span>
-            <kbd className="hidden lg:inline-block rounded bg-zinc-200/60 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
-              ⌘K
-            </kbd>
-          </button>
+          {/* Inline Search Bar on Desktop */}
+          <NavbarSearch className="hidden sm:block w-64 lg:w-80" />
 
           {/* Actions: Compare, Wishlist, Cart, Profile */}
           <div className="flex items-center gap-1 sm:gap-2">
             <button
-              onClick={() => setSearchOpen(true)}
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
               className="sm:hidden p-2 text-zinc-600 hover:text-zinc-900 rounded-xl hover:bg-zinc-100"
-              aria-label="Search"
+              aria-label="Toggle search"
             >
               <Search className="h-5 w-5" />
             </button>
@@ -212,6 +203,13 @@ export function Navbar() {
           </div>
         </div>
 
+        {/* Mobile inline search bar */}
+        {mobileSearchOpen && (
+          <div className="sm:hidden border-t border-zinc-100 bg-white/95 px-4 py-2.5 backdrop-blur-md">
+            <NavbarSearch className="w-full" />
+          </div>
+        )}
+
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-zinc-200 bg-white px-4 py-4 space-y-3">
@@ -230,7 +228,6 @@ export function Navbar() {
       </header>
 
       {/* Modals & Overlays */}
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <CartDrawer />
       <AuthModal />
     </>
