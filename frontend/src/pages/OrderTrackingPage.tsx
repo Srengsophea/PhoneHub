@@ -197,6 +197,30 @@ export function OrderTrackingPage() {
         </div>
       )}
 
+      {order && !loading && (searchParams.get('new') === '1' || searchParams.get('success') === '1') && (
+        <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/40 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <Check className="h-5 w-5 stroke-[3]" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-zinc-950 text-sm sm:text-base">Order Placed Successfully!</h3>
+              <p className="text-xs text-zinc-600 mt-0.5">
+                Thank you for your purchase. Your official manufacturer warranty invoice is ready to download.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={() => printOrderInvoice(order)}
+            className="gap-2 bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold rounded-lg px-4 py-2 shrink-0 shadow-sm"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span>Download Invoice (PDF)</span>
+          </Button>
+        </div>
+      )}
+
       {order && !loading && (
         <div className="rounded-md border border-zinc-200 bg-white p-6 sm:p-8 space-y-8 shadow-xs">
           {/* Header Info */}

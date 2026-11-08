@@ -92,11 +92,6 @@ export const useCart = create<CartState>((set, get) => {
       }
     },
     add: (productId, variantId = null, quantity = 1, openDrawer = true) => {
-      const authUser = useAuth.getState().user;
-      if (!authUser) {
-        useAuth.getState().openAuthModal('login', 'Please sign in to your account to add items to your cart.');
-        return Promise.resolve({ ok: false, message: 'Please sign in to add items to your cart.' });
-      }
       return run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), openDrawer);
     },
     update: (itemId, quantity) =>

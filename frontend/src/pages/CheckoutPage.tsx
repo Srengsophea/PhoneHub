@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Truck, ArrowRight, CreditCard, Banknote, QrCode, MapPin } from 'lucide-react';
+import { ShieldCheck, Truck, ArrowRight, CreditCard, Banknote, QrCode, MapPin, CheckCircle2, UserCheck, Sparkles, Mail, User, Phone } from 'lucide-react';
 import { useCart } from '@/stores/cart';
 import { useAuth } from '@/stores/auth';
 import { Button, Input } from '@/components/ui';
@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 export function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, clear: clearCart, setOpen: setCartOpen } = useCart();
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
 
   useEffect(() => {
     // Ensure the shopping cart drawer is always closed on the checkout page
@@ -36,6 +36,7 @@ export function CheckoutPage() {
   const [formData, setFormData] = useState({
     full_name: user?.name || '',
     phone: user?.phone || '',
+    email: user?.email || '',
     address_line_1: '',
     address_line_2: '',
     city: 'Phnom Penh',
@@ -56,6 +57,7 @@ export function CheckoutPage() {
           ...prev,
           full_name: defaultAddr.full_name || prev.full_name,
           phone: defaultAddr.phone || prev.phone,
+          email: user.email || prev.email,
           address_line_1: defaultAddr.address_line_1 || prev.address_line_1,
           address_line_2: defaultAddr.address_line_2 || prev.address_line_2,
           city: defaultAddr.city || prev.city,
@@ -66,6 +68,7 @@ export function CheckoutPage() {
           ...prev,
           full_name: prev.full_name || user.name || '',
           phone: prev.phone || user.phone || '',
+          email: prev.email || user.email || '',
         }));
       }
     }
@@ -98,8 +101,8 @@ export function CheckoutPage() {
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.full_name || !formData.phone || !formData.address_line_1) {
-      toast.error('Please complete all required shipping fields.');
+    if (!formData.full_name.trim() || !formData.phone.trim() || !formData.email.trim() || !formData.address_line_1.trim()) {
+      toast.error('Please enter your full name, phone number, email address, and shipping address.');
       return;
     }
 
@@ -115,12 +118,16 @@ export function CheckoutPage() {
         shipping_address: {
           full_name: formData.full_name,
           phone: formData.phone,
+          email: formData.email,
           address_line_1: formData.address_line_1,
           address_line_2: formData.address_line_2,
           city: formData.city || 'Phnom Penh',
           province: formData.province || 'Phnom Penh',
           country: formData.country,
         },
+        guest_email: formData.email,
+        guest_name: formData.full_name,
+        guest_phone: formData.phone,
         payment_method: paymentMethod,
         customer_notes: formData.customer_notes,
         items: payloadItems,
@@ -133,16 +140,14 @@ export function CheckoutPage() {
         ...order,
         order_number: orderNumber,
         user_id: user?.id ?? order?.user_id,
-        user: user || order?.user,
-        customer_email: user?.email,
-        customer_name: user?.name || formData.full_name,
+        user: user || order?.user || { name: formData.full_name, email: formData.email, phone: formData.phone },
+        customer_email: formData.email || user?.email,
+        customer_name: formData.full_name || user?.name,
         shipping_address: {
           ...formData,
-          email: user?.email,
         },
         shipping_address_snapshot: {
           ...formData,
-          email: user?.email,
         },
       };
       saveLocalOrder(fullOrder, user);
@@ -155,7 +160,7 @@ export function CheckoutPage() {
       } else {
         await clearCart();
         toast.success('Order placed successfully!');
-        navigate(`/orders/track/${orderNumber}`);
+        navigate(`/orders/track/${orderNumber}?success=1`);
       }
     } catch (err: any) {
       console.error('Checkout error detail:', err);
@@ -170,7 +175,7 @@ export function CheckoutPage() {
     if (pendingOrder) {
       await clearCart();
       toast('Order created! Payment is pending verification.', { icon: 'ℹ️' });
-      navigate(`/orders/track/${pendingOrder.order_number}`);
+      navigate(`/orders/track/${pendingOrder.order_number}?new=1`);
     }
   };
 
@@ -181,24 +186,105 @@ export function CheckoutPage() {
     await clearCart();
     setKhqrModalOpen(false);
     const targetNum = pendingOrder?.order_number || 'PH-2026-000001';
-    navigate(`/orders/track/${targetNum}`);
+    navigate(`/orders/track/${targetNum}?success=1`);
   };
 
   return (
     <div className="container-page py-10">
-      <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mb-8">
-        Secure Checkout
-      </h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950">
+          Secure Checkout
+        </h1>
+        <p className="text-xs sm:text-sm text-zinc-500 mt-1">
+          Complete your order with official manufacturer warranty and instant tax invoice.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Shipping and Payment Forms */}
-        <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-8">
-          {/* Shipping Details */}
+        <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-6">
+          {/* Checkout Options for Guests vs Existing Accounts */}
+          {!user ? (
+            <div className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Checkout Selection</span>
+                <span className="text-xs font-semibold text-emerald-600">Guest Checkout Enabled</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Option 1: Account Login / Register */}
+                <div className="p-4 rounded-lg border border-zinc-200 bg-zinc-50/60 hover:border-zinc-300 transition flex flex-col justify-between space-y-3">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded">
+                      Option 1
+                    </span>
+                    <h3 className="font-extrabold text-sm text-zinc-950 pt-0.5">Have an Account?</h3>
+                    <p className="text-xs text-zinc-500 leading-relaxed">
+                      Sign in to use your saved addresses and sync orders to your profile.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => openAuthModal('login', 'Sign in to access your saved addresses and orders.')}
+                      className="text-xs font-bold rounded-md bg-zinc-950 text-white hover:bg-zinc-800"
+                    >
+                      Sign In
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAuthModal('register', 'Register an account to track your orders.')}
+                      className="text-xs font-bold rounded-md border-zinc-300 hover:bg-white"
+                    >
+                      Sign Up
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Option 2: Guest Checkout */}
+                <div className="p-4 rounded-lg border-2 border-zinc-900 bg-white shadow-2xs flex flex-col justify-between space-y-3">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded">
+                      Option 2 (Selected)
+                    </span>
+                    <h3 className="font-extrabold text-sm text-zinc-950 pt-0.5">Instant Guest Checkout</h3>
+                    <p className="text-xs text-zinc-500 leading-relaxed">
+                      No account needed. Fill in your real name, phone, and email below to place your order and receive your downloadable invoice.
+                    </p>
+                  </div>
+                  <div className="pt-1 text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Enter information below</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-zinc-950 text-white font-bold flex items-center justify-center text-xs">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-900">Signed in as {user.name}</p>
+                  <p className="text-[11px] text-zinc-500">{user.email}</p>
+                </div>
+              </div>
+              <Link to="/profile" className="text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:underline">
+                Manage Profile
+              </Link>
+            </div>
+          )}
+
+          {/* Customer & Shipping Details */}
           <div className="rounded-md border border-zinc-200/90 p-6 space-y-4 bg-white shadow-2xs">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-zinc-950 flex items-center gap-2">
+              <h2 className="text-base font-bold text-zinc-950 flex items-center gap-2">
                 <Truck className="h-5 w-5 text-zinc-900" />
-                1. Delivery Address
+                1. Customer & Delivery Information
               </h2>
               {user && (
                 <Link to="/profile" className="text-xs font-bold text-brand-600 hover:underline">
@@ -241,11 +327,11 @@ export function CheckoutPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Full Name *"
+                label="Full Real Name *"
                 required
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                placeholder="John Doe"
+                placeholder="e.g. Sok Chea"
               />
               <Input
                 label="Phone Number *"
@@ -256,6 +342,15 @@ export function CheckoutPage() {
                 placeholder="+855 12 345 678"
               />
             </div>
+
+            <Input
+              label="Email Address (for Invoice & Receipt) *"
+              required
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="sokchea@example.com"
+            />
 
             <Input
               label="Street Address / House No. *"
@@ -284,18 +379,18 @@ export function CheckoutPage() {
               label="Delivery Instructions (Optional)"
               value={formData.customer_notes}
               onChange={(e) => setFormData({ ...formData, customer_notes: e.target.value })}
-              placeholder="Call before arrival or leave with security..."
+              placeholder="Call before arrival or leave with reception..."
             />
           </div>
 
           {/* Payment Method */}
           <div className="rounded-md border border-zinc-200/90 p-6 space-y-4 bg-white shadow-2xs">
-            <h2 className="text-lg font-bold text-zinc-950 flex items-center justify-between">
+            <h2 className="text-base font-bold text-zinc-950 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-zinc-900" />
-                2. Payment Method
+                2. Select Payment Method
               </span>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-sm bg-red-50 text-red-600 border border-red-200">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-sm text-red-600 bg-red-50 border border-red-200">
                 Bakong KHQR Active
               </span>
             </h2>
@@ -304,29 +399,24 @@ export function CheckoutPage() {
               {/* Bakong KHQR */}
               <div
                 onClick={() => setPaymentMethod('khqr')}
-                className={`p-4 rounded-md border cursor-pointer transition relative overflow-hidden ${
+                className={`p-4 rounded-md border cursor-pointer transition relative ${
                   paymentMethod === 'khqr'
-                    ? 'border-2 border-red-600 bg-red-50/40 shadow-xs'
-                    : 'border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300'
+                    ? 'border-2 border-[#E12326] bg-red-50/30 shadow-xs'
+                    : 'border-zinc-200 bg-white hover:border-zinc-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black px-1.5 py-0.5 rounded bg-red-600 text-white">
-                      KHQR
-                    </span>
-                    <span className="text-[11px] font-bold text-zinc-700">Bakong</span>
-                  </div>
-                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-sm">
-                    Instant
+                  <QrCode className="h-5 w-5 text-[#E12326]" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#E12326] bg-[#E12326]/10 px-1.5 py-0.5 rounded">
+                    Popular
                   </span>
                 </div>
-                <p className="text-sm font-bold text-zinc-950">Bakong KHQR</p>
-                <p className="text-xs text-zinc-500 mt-0.5">ABA, Wing, ACLEDA & all banks</p>
-                <p className="text-[10px] font-mono text-zinc-400 mt-1">To: {BAKONG_ACCOUNT_ID}</p>
+                <p className="text-sm font-bold text-zinc-950">NBC Bakong KHQR</p>
+                <p className="text-xs text-zinc-500 mt-0.5">ABA, ACLEDA, Sathapana, Wing</p>
+                <p className="text-[10px] font-bold text-emerald-600 mt-1">Instant Auto-Confirmation</p>
               </div>
 
-              {/* Cash on Delivery */}
+              {/* Cash On Delivery */}
               <div
                 onClick={() => setPaymentMethod('cod')}
                 className={`p-4 rounded-md border cursor-pointer transition ${
@@ -336,16 +426,16 @@ export function CheckoutPage() {
                 }`}
               >
                 <Banknote className="h-5 w-5 mb-2" />
-                <p className="text-sm font-bold">Cash on Delivery</p>
+                <p className="text-sm font-bold">Cash on Delivery (COD)</p>
                 <p className={`text-xs mt-0.5 ${paymentMethod === 'cod' ? 'text-zinc-300' : 'text-zinc-500'}`}>
-                  Pay upon receiving phone
+                  Pay upon package arrival
                 </p>
                 <p className={`text-[10px] mt-1 ${paymentMethod === 'cod' ? 'text-zinc-400' : 'text-zinc-400'}`}>
-                  Phnom Penh & Provinces
+                  All 25 Provinces
                 </p>
               </div>
 
-              {/* Credit Card */}
+              {/* Credit / Debit Card */}
               <div
                 onClick={() => setPaymentMethod('stripe')}
                 className={`p-4 rounded-md border cursor-pointer transition ${
@@ -451,8 +541,8 @@ export function CheckoutPage() {
         onClose={handleCloseKHQRModal}
         onSuccess={handleKHQRSuccess}
         khqrData={khqrData}
+        order={pendingOrder}
       />
     </div>
   );
 }
-

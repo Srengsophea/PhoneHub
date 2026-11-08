@@ -7,6 +7,7 @@ export function printOrderInvoice(order: Order): void {
   const shipping = order.shipping_address_snapshot as any;
   const customerName = shipping?.full_name || order.user?.name || 'Valued Customer';
   const customerPhone = shipping?.phone || order.user?.phone || 'N/A';
+  const customerEmail = shipping?.email || (order as any).customer_email || order.user?.email || '';
   const customerAddress = shipping
     ? `${shipping.address_line_1 || ''}, ${shipping.city || ''} ${shipping.province || ''}, ${shipping.country || 'Cambodia'}`
     : 'Phnom Penh, Cambodia';
@@ -252,6 +253,7 @@ export function printOrderInvoice(order: Order): void {
           <h3>Billed & Shipped To:</h3>
           <div class="meta-name">${customerName}</div>
           <div style="color: #3f3f46; font-weight: 600;">${customerPhone}</div>
+          ${customerEmail ? `<div style="color: #71717a; font-size: 11px;">${customerEmail}</div>` : ''}
           <div style="color: #71717a; margin-top: 2px;">${customerAddress}</div>
         </div>
 

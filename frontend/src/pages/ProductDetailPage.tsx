@@ -298,10 +298,6 @@ export function ProductDetailPage() {
 
   const handleBuyNow = async () => {
     if (!product) return;
-    if (!user) {
-      openAuthModal('login', 'Please sign in to your account to complete your purchase.');
-      return;
-    }
     setBuyingNow(true);
     try {
       // Pass openDrawer = false so shopping cart drawer does NOT open on Buy Now
@@ -320,10 +316,6 @@ export function ProductDetailPage() {
   };
 
   const handleAddToCart = async () => {
-    if (!user) {
-      openAuthModal('login', 'Please sign in to your account to add items to your cart.');
-      return;
-    }
     const res = await addToCart(product.id, activeVariant?.id, quantity);
     if (res.ok) {
       toast.success(`Added ${product.name} to cart`);
@@ -334,12 +326,8 @@ export function ProductDetailPage() {
 
   const handleWishlistToggle = async () => {
     if (!product) return;
-    if (!user) {
-      openAuthModal('login', 'Please sign in to your account to save items to your wishlist.');
-      return;
-    }
     const nowIn = await toggleWishlist(product.id);
-    toast.success(nowIn ? 'Added to wishlist' : 'Removed from wishlist');
+    toast.success(nowIn ? 'Added to favorites' : 'Removed from favorites');
   };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {

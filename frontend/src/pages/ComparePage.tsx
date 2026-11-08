@@ -25,10 +25,6 @@ export function ComparePage() {
   }
 
   const handleAddCart = async (productId: number, name: string) => {
-    if (!user) {
-      openAuthModal('login', 'Please sign in to your account to add items to your cart.');
-      return;
-    }
     const res = await addToCart(productId);
     if (res.ok) toast.success(`Added ${name} to cart`);
     else toast.error(res.message || 'Could not add to cart');

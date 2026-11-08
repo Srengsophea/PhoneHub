@@ -71,10 +71,12 @@ Route::prefix('v1')->group(function () {
         return response()->json($result);
     });
 
+    // Public / Guest & Authenticated Checkout
+    Route::post('/checkout', [CheckoutController::class, 'checkout']);
+
     // Customer Protected Routes
     Route::middleware('auth:sanctum')->group(function () {
-        // Checkout & Orders
-        Route::post('/checkout', [CheckoutController::class, 'checkout']);
+        // Orders
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/orders/{id}', [OrderController::class, 'show']);
 

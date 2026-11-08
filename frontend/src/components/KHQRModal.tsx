@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Clock, ShieldCheck, Copy, Smartphone, RefreshCw, Loader2, Sparkles } from 'lucide-react';
+import { X, CheckCircle, Clock, ShieldCheck, Copy, Smartphone, RefreshCw, Loader2, Sparkles, Printer, ArrowRight, Download } from 'lucide-react';
 import { generateKHQR, type GeneratedKHQR } from '@/lib/khqr';
 import { formatPrice } from '@/lib/format';
 import { Button } from './ui';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { updateLocalOrderStatus } from '@/lib/orders';
+import { printOrderInvoice } from '@/lib/invoicePrinter';
 
 interface KHQRModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   khqrData: GeneratedKHQR | null;
+  order?: any;
 }
 
-export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrData }: KHQRModalProps) {
+export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrData, order }: KHQRModalProps) {
   const [khqrData, setKhqrData] = useState<GeneratedKHQR | null>(initialKhqrData);
   const [currency, setCurrency] = useState<'USD' | 'KHR'>('USD');
   const [timeLeft, setTimeLeft] = useState(15 * 60);
@@ -111,10 +113,7 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
       if (res.data?.paid) {
         updateLocalOrderStatus(khqrData.billNumber, 'confirmed', 'paid');
         setPaid(true);
-        toast.success('Payment verified! Your order is now confirmed.');
-        setTimeout(() => {
-          onSuccess();
-        }, 900);
+        toast.success('Payment verified! Your order is confirmed.');
         return;
       }
 
@@ -157,14 +156,43 @@ export function KHQRModal({ isOpen, onClose, onSuccess, khqrData: initialKhqrDat
         {/* Modal Body */}
         <div className="p-6 text-center space-y-4">
           {paid ? (
-            <div className="py-12 space-y-4">
+            <div className="py-8 space-y-5">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 animate-bounce">
                 <CheckCircle className="h-10 w-10" />
               </div>
-              <h3 className="text-xl font-bold text-zinc-900">Payment Approved!</h3>
-              <p className="text-sm text-zinc-500">
-                Transaction confirmed on Bakong network. Redirecting to your order tracking...
-              </p>
+              <div className="space-y-1">
+                <h3 className="text-xl font-extrabold text-zinc-950">Payment Confirmed!</h3>
+                <p className="text-xs text-zinc-500">
+                  Transaction verified on the National Bank of Cambodia Bakong network.
+                </p>
+                {khqrData && (
+                  <p className="text-xs font-mono font-bold text-zinc-800 pt-1">
+                    Order #{khqrData.billNumber}
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2.5">
+                {order && (
+                  <Button
+                    type="button"
+                    onClick={() => printOrderInvoice(order)}
+                    className="w-full text-xs font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-lg h-11 justify-center"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download Invoice (PDF)</span>
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  onClick={onSuccess}
+                  variant="outline"
+                  className="w-full text-xs font-bold gap-2 border-zinc-300 hover:bg-zinc-50 rounded-lg h-11 justify-center"
+                >
+                  <span>View Order Tracking</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ) : (
             <>

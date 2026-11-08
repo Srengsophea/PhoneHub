@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\CartService;
 use App\Services\CheckoutService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
@@ -22,6 +24,7 @@ class CheckoutController extends Controller
             'shipping_address' => 'required|array',
             'shipping_address.full_name' => 'required|string|max:255',
             'shipping_address.phone' => 'required|string|max:50',
+            'shipping_address.email' => 'nullable|email|max:255',
             'shipping_address.address_line_1' => 'required|string|max:255',
             'shipping_address.village' => 'nullable|string|max:100',
             'shipping_address.commune' => 'nullable|string|max:100',
@@ -39,9 +42,35 @@ class CheckoutController extends Controller
             'items.*.variant_id' => 'nullable|exists:product_variants,id',
             'items.*.quantity' => 'nullable|integer|min:1|max:10',
             'guest_session_id' => 'nullable|string',
+            'guest_email' => 'nullable|email|max:255',
+            'guest_name' => 'nullable|string|max:255',
+            'guest_phone' => 'nullable|string|max:50',
         ]);
 
-        $user = $request->user();
+        $user = $request->user('sanctum');
+
+        // If guest checkout without existing session, associate or create customer profile
+        if (!$user) {
+            $guestEmail = strtolower(trim($request->input('guest_email') ?? $validated['shipping_address']['email'] ?? ''));
+            if (!$guestEmail) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please provide a valid email address for order notifications and invoice download.',
+                ], 422);
+            }
+
+            $user = User::firstOrCreate(
+                ['email' => $guestEmail],
+                [
+                    'name' => $request->input('guest_name') ?? $validated['shipping_address']['full_name'],
+                    'phone' => $request->input('guest_phone') ?? $validated['shipping_address']['phone'] ?? null,
+                    'password' => bcrypt(Str::random(24)),
+                    'role' => 'customer',
+                    'is_active' => true,
+                ]
+            );
+        }
+
         $sessionId = $request->header('X-Guest-Session-Id') ?? $request->input('guest_session_id');
         $cart = $this->cartService->getCart($user, $sessionId);
 

@@ -23,10 +23,6 @@ export function ProductCard({ product }: { product: Product }) {
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) {
-      openAuthModal('login', 'Please sign in to your account to add items to your cart.');
-      return;
-    }
     setAdding(true);
     const res = await addToCart(product.id);
     setAdding(false);
@@ -40,12 +36,8 @@ export function ProductCard({ product }: { product: Product }) {
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) {
-      openAuthModal('login', 'Please sign in to your account to save items to your wishlist.');
-      return;
-    }
     const nowIn = await toggleWishlist(product.id);
-    toast.success(nowIn ? 'Added to wishlist' : 'Removed from wishlist');
+    toast.success(nowIn ? 'Added to favorites' : 'Removed from favorites');
   };
 
   const handleCompare = (e: React.MouseEvent) => {
