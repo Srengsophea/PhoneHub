@@ -254,6 +254,9 @@ export function ProductDetailPage() {
     ? product.base_price
     : null;
 
+  const totalPrice = Number(currentPrice || 0) * quantity;
+  const totalOriginalPrice = originalPrice ? Number(originalPrice) * quantity : null;
+
   const inStock = activeVariant ? activeVariant.stock > 0 : true;
 
   const handleStorageSelect = (storage: string) => {
@@ -466,13 +469,18 @@ export function ProductDetailPage() {
           </div>
 
           {/* Pricing */}
-          <div className="flex items-baseline gap-3 border-y border-zinc-100 py-4">
-            <span className="text-3xl font-extrabold text-zinc-950">
-              {formatPrice(currentPrice)}
+          <div className="flex items-baseline gap-3 border-y border-zinc-100 py-4 flex-wrap">
+            <span className="text-3xl font-extrabold text-zinc-950 transition-colors">
+              {formatPrice(totalPrice)}
             </span>
-            {originalPrice && (
+            {totalOriginalPrice && (
               <span className="text-lg text-zinc-400 line-through">
-                {formatPrice(originalPrice)}
+                {formatPrice(totalOriginalPrice)}
+              </span>
+            )}
+            {quantity > 1 && (
+              <span className="text-xs font-semibold text-zinc-500">
+                ({formatPrice(currentPrice)} each)
               </span>
             )}
           </div>
