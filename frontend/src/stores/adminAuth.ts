@@ -60,6 +60,11 @@ export const useAdminAuth = create<AdminAuthState>((set, get) => ({
     const token: string = data.data.token;
 
     if (!isStaff(user.role)) {
+      if (token) {
+        api.post('/auth/logout', {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      }
       throw new Error('Access Denied: This console is strictly restricted to authorized administrators.');
     }
 

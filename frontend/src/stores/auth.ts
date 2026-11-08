@@ -58,7 +58,12 @@ export const useAuth = create<AuthState>((set, get) => ({
 
     // Explicitly prevent administrator accounts from logging into customer store
     if (isStaff(user.role)) {
-      throw new Error('Incorrect email or password. Administrator accounts must sign in at /admin/login.');
+      if (data.data.token) {
+        api.post('/auth/logout', {}, {
+          headers: { Authorization: `Bearer ${data.data.token}` },
+        }).catch(() => {});
+      }
+      throw new Error('Incorrect email or password. Please try again.');
     }
 
     localStorage.setItem(TOKEN_KEY, data.data.token);
