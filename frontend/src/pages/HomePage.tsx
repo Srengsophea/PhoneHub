@@ -9,7 +9,7 @@ import {
   RotateCcw,
   Sparkles,
   Award,
-  Zap,
+  Cpu,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { ProductCard } from '@/components/ProductCard';
@@ -114,16 +114,6 @@ export function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
             {/* Left Headline pitch */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 rounded-md border border-zinc-200/90 bg-white px-3 py-1.5 shadow-2xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
-                </span>
-                <span className="text-xs font-bold tracking-wide text-zinc-800">
-                  2026 Flagship Showcase • Sealed & Certified
-                </span>
-              </div>
-
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-zinc-950 leading-[1.15]">
                 Engineered for speed. <br className="hidden sm:inline" />
                 <span>
@@ -255,8 +245,8 @@ export function HomePage() {
 
                   {/* Device Info & Specs Badge */}
                   <div className="mt-6 space-y-1.5">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                      <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                    <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600">
+                      <Cpu className="h-3.5 w-3.5 text-zinc-500" />
                       <span>{spotlightDevices[activeSpotlight].tag}</span>
                       <span className="text-zinc-300">•</span>
                       <span className="text-emerald-600 font-bold">In Stock</span>
