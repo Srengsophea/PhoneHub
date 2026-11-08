@@ -411,12 +411,13 @@ export function OrderTrackingPage() {
                 <span>Payment Status:</span>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`font-bold px-2 py-0.5 rounded-sm text-[10px] uppercase ${
+                    className={`font-bold text-xs uppercase flex items-center gap-1.5 ${
                       order.payment_status === 'paid'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        ? 'text-emerald-600'
+                        : 'text-amber-600'
                     }`}
                   >
+                    <span className={`h-1.5 w-1.5 rounded-full ${order.payment_status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     {order.payment_status === 'paid' ? 'Paid / Settled' : 'Payment Pending'}
                   </span>
                   {order.payment_status !== 'paid' && (

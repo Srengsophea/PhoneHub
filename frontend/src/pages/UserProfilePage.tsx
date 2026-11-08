@@ -500,14 +500,13 @@ export function UserProfilePage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
                             <span
-                              className={`px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
-                                isPaid
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                                isPaid ? 'text-emerald-600' : 'text-amber-600'
                               }`}
                             >
+                              <span className={`h-1.5 w-1.5 rounded-full ${isPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                               {isPaid ? 'PAID' : 'PENDING'}
                             </span>
                             <Badge tone={orderStatusTone(o.status)} dot>

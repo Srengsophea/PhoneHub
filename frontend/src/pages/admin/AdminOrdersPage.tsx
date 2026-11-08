@@ -111,12 +111,13 @@ export function AdminOrdersPage() {
                         {o.payment_method}
                       </span>
                       <span
-                        className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        className={`font-mono text-[11px] font-bold flex items-center gap-1.5 ${
                           o.payment_status === 'paid'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                            ? 'text-emerald-600'
+                            : 'text-amber-600'
                         }`}
                       >
+                        <span className={`h-1.5 w-1.5 rounded-full ${o.payment_status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                         {o.payment_status === 'paid' ? 'PAID' : 'PENDING'}
                       </span>
                     </div>

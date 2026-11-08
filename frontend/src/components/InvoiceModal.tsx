@@ -100,10 +100,8 @@ export function InvoiceModal({ order, open, onClose }: InvoiceModalProps) {
               </p>
               <div className="pt-2">
                 <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${
-                    isPaid
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider ${
+                    isPaid ? 'text-emerald-600' : 'text-amber-600'
                   }`}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
