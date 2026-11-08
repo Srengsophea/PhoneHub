@@ -72,7 +72,14 @@ export function AuthModal() {
       }
       closeAuthModal();
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(
+        getErrorMessage(
+          err,
+          mode === 'login'
+            ? 'Incorrect email or password. Please try again.'
+            : 'Could not complete registration. Please check your information and try again.'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -148,7 +155,18 @@ export function AuthModal() {
         {error && (
           <div className="flex items-start gap-2.5 p-3 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md animate-fade-in">
             <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{error}</span>
+            <div className="leading-relaxed flex-1">
+              <p>{error}</p>
+              {error.includes('/admin/login') && (
+                <a
+                  href="/admin/login"
+                  onClick={() => closeAuthModal()}
+                  className="inline-flex items-center gap-1 mt-1 font-bold text-red-800 underline hover:text-red-950 transition"
+                >
+                  Go to Admin Login &rarr;
+                </a>
+              )}
+            </div>
           </div>
         )}
 

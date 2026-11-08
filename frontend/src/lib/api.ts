@@ -61,15 +61,48 @@ api.interceptors.response.use(
   },
 );
 
-/** Extracts a human readable message from a Laravel error response. */
-export function getErrorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
+/** Extracts a human readable message from an error response or Error object. */
+export function getErrorMessage(err: unknown, fallback = 'Incorrect email or password. Please try again.'): string {
+  if (!err) return fallback;
+
+  // Handle standard JavaScript Error objects that don't have an Axios HTTP response
+  if (err instanceof Error) {
+    const axiosErr = err as AxiosError<{ message?: string; errors?: Record<string, string[]> }>;
+    if (!axiosErr.response && err.message) {
+      return err.message;
+    }
+  }
+
   const e = err as AxiosError<{ message?: string; errors?: Record<string, string[]> }>;
   const data = e?.response?.data;
+
+  // Check validation errors dictionary
   if (data?.errors) {
     const first = Object.values(data.errors)[0];
-    if (first?.[0]) return first[0];
+    if (first?.[0]) {
+      const msg = first[0];
+      if (msg.toLowerCase().includes('credentials do not match') || msg.toLowerCase().includes('password')) {
+        return 'Incorrect email or password. Please try again.';
+      }
+      return msg;
+    }
   }
-  return data?.message || fallback;
+
+  // Check response message
+  if (data?.message) {
+    const msg = data.message;
+    if (msg.toLowerCase().includes('credentials do not match')) {
+      return 'Incorrect email or password. Please try again.';
+    }
+    return msg;
+  }
+
+  // Check 401 or 422 authentication error
+  if (e?.response?.status === 401 || e?.response?.status === 422) {
+    return 'Incorrect email or password. Please try again.';
+  }
+
+  return fallback;
 }
 
 /** Returns Laravel validation errors keyed by field (first message only). */

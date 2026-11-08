@@ -58,7 +58,7 @@ export const useAuth = create<AuthState>((set, get) => ({
 
     // Explicitly prevent administrator accounts from logging into customer store
     if (isStaff(user.role)) {
-      throw new Error('Administrator accounts cannot log in through the customer storefront. Please access the Administrator Portal at /admin/login.');
+      throw new Error('Incorrect email or password. Administrator accounts must sign in at /admin/login.');
     }
 
     localStorage.setItem(TOKEN_KEY, data.data.token);

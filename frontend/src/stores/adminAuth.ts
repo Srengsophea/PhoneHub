@@ -89,3 +89,4 @@ window.addEventListener('phonehub:admin_unauthorized', () => {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
   localStorage.removeItem(ADMIN_USER_KEY);
 });
+

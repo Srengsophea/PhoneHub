@@ -48,7 +48,7 @@ export function AdminLoginPage() {
       toast.success(`Welcome back, ${loggedUser.name}!`);
       navigate('/admin', { replace: true });
     } catch (err: any) {
-      setError(getErrorMessage(err, 'Invalid administrator credentials. Please try again.'));
+      setError(getErrorMessage(err, 'Incorrect email or password. Please try again.'));
     } finally {
       setLoading(false);
     }
