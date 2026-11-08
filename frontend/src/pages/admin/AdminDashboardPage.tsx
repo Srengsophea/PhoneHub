@@ -55,25 +55,21 @@ export function AdminDashboardPage() {
       label: 'Gross Revenue',
       val: formatPrice(stats?.total_revenue || 0),
       icon: <DollarSign className="h-5 w-5 text-emerald-600" />,
-      bg: 'bg-emerald-50',
     },
     {
       label: 'Total Orders',
       val: stats?.orders_count || 0,
-      icon: <ShoppingBag className="h-5 w-5 text-brand-600" />,
-      bg: 'bg-brand-50',
+      icon: <ShoppingBag className="h-5 w-5 text-blue-600" />,
     },
     {
       label: 'Registered Customers',
       val: stats?.customers_count || 0,
       icon: <Users className="h-5 w-5 text-purple-600" />,
-      bg: 'bg-purple-50',
     },
     {
       label: 'Catalog Devices',
       val: stats?.products_count || 0,
-      icon: <Smartphone className="h-5 w-5 text-zinc-900" />,
-      bg: 'bg-zinc-100',
+      icon: <Smartphone className="h-5 w-5 text-zinc-700" />,
     },
   ];
 
@@ -95,7 +91,7 @@ export function AdminDashboardPage() {
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
                 {k.label}
               </span>
-              <div className={`p-2.5 rounded-2xl ${k.bg}`}>{k.icon}</div>
+              <div>{k.icon}</div>
             </div>
             <p className="text-2xl font-black text-zinc-950">{k.val}</p>
           </div>
