@@ -11,11 +11,11 @@ import {
   CheckCircle2,
   ChevronRight,
   Loader2,
-  Zap,
+  CreditCard,
   Check,
 } from 'lucide-react';
 import api from '@/lib/api';
-import { Button, Stars, Badge } from '@/components/ui';
+import { Button, Stars } from '@/components/ui';
 import { formatPrice, productImage, imageUrl } from '@/lib/format';
 import { useCart } from '@/stores/cart';
 import { useWishlist } from '@/stores/wishlist';
@@ -454,9 +454,14 @@ export function ProductDetailPage() {
               <span className="text-zinc-300">•</span>
               <span className="text-sm text-zinc-500">{product.reviews_count || 0} reviews</span>
               <span className="text-zinc-300">•</span>
-              <Badge tone={inStock ? 'success' : 'danger'}>
+              <span
+                className={`inline-flex items-center gap-1.5 text-xs font-bold ${
+                  inStock ? 'text-emerald-600' : 'text-red-600'
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${inStock ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 {inStock ? 'In Stock' : 'Out of Stock'}
-              </Badge>
+              </span>
             </div>
           </div>
 
@@ -661,7 +666,7 @@ export function ProductDetailPage() {
                   {buyingNow ? (
                     <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   ) : (
-                    <Zap className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />
+                    <CreditCard className="h-4 w-4 shrink-0" />
                   )}
                   <span className="truncate">Buy Now</span>
                 </Button>
@@ -714,7 +719,7 @@ export function ProductDetailPage() {
                 {buyingNow ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Zap className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <CreditCard className="h-4 w-4 shrink-0" />
                 )}
                 <span>Buy Now</span>
               </Button>
