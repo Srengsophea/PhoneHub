@@ -7,9 +7,11 @@ import './index.css';
 
 // Initialise auth session
 import { useAuth } from '@/stores/auth';
+import { useAdminAuth } from '@/stores/adminAuth';
 import { useCart } from '@/stores/cart';
 
 useAuth.getState().init();
+useAdminAuth.getState().init();
 useCart.getState().fetch();
 
 createRoot(document.getElementById('root')!).render(

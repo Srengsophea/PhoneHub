@@ -13,14 +13,18 @@ import {
   ChevronRight,
   Loader2,
 } from 'lucide-react';
-import { useAuth } from '@/stores/auth';
+import { useAdminAuth } from '@/stores/adminAuth';
 import { isStaff } from '@/lib/format';
 import { useEffect } from 'react';
 
 export function AdminLayout() {
-  const { user, initialized, logout } = useAuth();
+  const { user, initialized, logout, init } = useAdminAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   useEffect(() => {
     if (initialized) {

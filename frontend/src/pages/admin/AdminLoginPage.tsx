@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ShieldCheck, Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft, AlertCircle, Sparkles } from 'lucide-react';
-import { useAuth } from '@/stores/auth';
+import { useAdminAuth } from '@/stores/adminAuth';
 import { isStaff } from '@/lib/format';
 import { Button } from '@/components/ui';
 import { getErrorMessage } from '@/lib/api';
@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 export function AdminLoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, login, logout, initialized } = useAuth();
+  const { user, login, initialized, init } = useAdminAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,6 +21,10 @@ export function AdminLoginPage() {
       ? 'Access restricted: Your account does not have administrative privileges.'
       : null
   );
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   // If already authenticated as an administrator, go straight to the dashboard
   useEffect(() => {
@@ -41,13 +45,6 @@ export function AdminLoginPage() {
     setLoading(true);
     try {
       const loggedUser = await login(email.trim(), password);
-
-      if (!isStaff(loggedUser.role)) {
-        await logout();
-        setError('Access Denied: This console is strictly restricted to authorized PhoneHub staff and administrators.');
-        return;
-      }
-
       toast.success(`Welcome back, ${loggedUser.name}!`);
       navigate('/admin', { replace: true });
     } catch (err: any) {
@@ -191,3 +188,4 @@ export function AdminLoginPage() {
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 
 export const TOKEN_KEY = 'phonehub_token';
+export const ADMIN_TOKEN_KEY = 'phonehub_admin_token';
 export const GUEST_KEY = 'phonehub_guest_session';
 
 export function getGuestSessionId(): string {
@@ -21,9 +22,20 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  // If authorization was already explicitly attached by caller, leave it
+  if (!config.headers.Authorization) {
+    const isAdminRequest =
+      config.url?.startsWith('/admin') ||
+      window.location.pathname.startsWith('/admin');
+
+    const adminToken = localStorage.getItem(ADMIN_TOKEN_KEY);
+    const customerToken = localStorage.getItem(TOKEN_KEY);
+
+    const token = isAdminRequest ? adminToken : customerToken;
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   config.headers['X-Guest-Session-Id'] = getGuestSessionId();
   return config;
@@ -33,8 +45,17 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      window.dispatchEvent(new Event('phonehub:unauthorized'));
+      const isAdminRequest =
+        error.config?.url?.startsWith('/admin') ||
+        window.location.pathname.startsWith('/admin');
+
+      if (isAdminRequest) {
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        window.dispatchEvent(new Event('phonehub:admin_unauthorized'));
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+        window.dispatchEvent(new Event('phonehub:unauthorized'));
+      }
     }
     return Promise.reject(error);
   },

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api, { TOKEN_KEY, getGuestSessionId } from '@/lib/api';
 import type { User } from '@/types';
+import { isStaff } from '@/lib/format';
 
 interface AuthState {
   user: User | null;
@@ -35,7 +36,16 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
     try {
       const { data } = await api.get('/auth/user');
-      set({ user: data.data, initialized: true });
+      const user = data.data;
+
+      // If customer session contains an administrator account, purge it from customer store
+      if (isStaff(user?.role)) {
+        localStorage.removeItem(TOKEN_KEY);
+        set({ user: null, token: null, initialized: true });
+        return;
+      }
+
+      set({ user, initialized: true });
     } catch {
       localStorage.removeItem(TOKEN_KEY);
       set({ user: null, token: null, initialized: true });
@@ -44,6 +54,13 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   login: async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password, guest_session_id: getGuestSessionId() });
+    const user = data.data.user;
+
+    // Explicitly prevent administrator accounts from logging into customer store
+    if (isStaff(user.role)) {
+      throw new Error('Administrator accounts cannot log in through the customer storefront. Please access the Administrator Portal at /admin/login.');
+    }
+
     localStorage.setItem(TOKEN_KEY, data.data.token);
     set({ user: data.data.user, token: data.data.token });
     return data.data.user;

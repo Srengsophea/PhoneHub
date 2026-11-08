@@ -169,16 +169,6 @@ export function Navbar() {
                       <p className="text-xs font-bold text-zinc-900 truncate">{user.email}</p>
                     </div>
 
-                    {isStaff(user.role) && (
-                      <Link
-                        to="/admin"
-                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition"
-                      >
-                        <LayoutDashboard className="h-4 w-4" />
-                        Admin Dashboard
-                      </Link>
-                    )}
-
                     <Link
                       to="/profile"
                       className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 transition"
@@ -255,28 +245,18 @@ export function Navbar() {
                     <UserIcon className="h-3.5 w-3.5 text-zinc-600" />
                     My Account
                   </Link>
-                  {isStaff(user.role) ? (
-                    <Link
-                      to="/admin"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-red-50 border border-red-200 text-xs font-bold text-red-600 hover:bg-red-100 transition"
-                    >
-                      <LayoutDashboard className="h-3.5 w-3.5" />
-                      Admin
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        logout();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-white border border-zinc-200 text-xs font-bold text-red-600 hover:bg-red-50 transition"
-                    >
-                      <LogOut className="h-3.5 w-3.5" />
-                      Sign Out
-                    </button>
-                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-white border border-zinc-200 text-xs font-bold text-red-600 hover:bg-red-50 transition"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Sign Out
+                  </button>
                 </div>
               </div>
             ) : (
