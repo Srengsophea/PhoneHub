@@ -116,12 +116,29 @@ export function AdminLayout() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full ring-1 ring-emerald-200">
-              Live Database Connected
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-xs font-bold text-white">
-              {user?.name?.slice(0, 2).toUpperCase() || 'AD'}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Live Database Connected</span>
+            </div>
+
+            <div className="h-4 w-px bg-zinc-200" />
+
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-950 text-xs font-bold text-white shadow-xs">
+                {user?.name?.charAt(0).toUpperCase() || 'A'}
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-xs font-bold text-zinc-900 leading-tight">
+                  {user?.name || 'Administrator'}
+                </p>
+                <p className="text-[10px] font-semibold text-zinc-400 capitalize">
+                  {user?.role || 'Admin'}
+                </p>
+              </div>
             </div>
           </div>
         </header>
