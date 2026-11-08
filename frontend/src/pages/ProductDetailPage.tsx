@@ -326,7 +326,7 @@ export function ProductDetailPage() {
 
   const handleWishlistToggle = async () => {
     if (!product) return;
-    const nowIn = await toggleWishlist(product.id);
+    const nowIn = await toggleWishlist(product.id, product);
     toast.success(nowIn ? 'Added to favorites' : 'Removed from favorites');
   };
 

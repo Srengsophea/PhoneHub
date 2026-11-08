@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: Product }) {
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const nowIn = await toggleWishlist(product.id);
+    const nowIn = await toggleWishlist(product.id, product);
     toast.success(nowIn ? 'Added to favorites' : 'Removed from favorites');
   };
 

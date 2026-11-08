@@ -6,7 +6,7 @@ import { Button } from '@/components/ui';
 import { Heart, Loader2 } from 'lucide-react';
 
 export function WishlistPage() {
-  const { items, fetch: fetchWishlist } = useWishlist();
+  const { items, loading, fetch: fetchWishlist } = useWishlist();
 
   useEffect(() => {
     fetchWishlist();
@@ -23,7 +23,11 @@ export function WishlistPage() {
         </p>
       </div>
 
-      {items.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+        </div>
+      ) : items.length === 0 ? (
         <div className="text-center py-24 rounded-3xl border border-zinc-200 bg-zinc-50/50">
           <Heart className="h-12 w-12 mx-auto text-zinc-300 mb-3" />
           <h3 className="text-lg font-bold text-zinc-900">Your wishlist is empty</h3>
@@ -37,7 +41,7 @@ export function WishlistPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {items.map((it) => (
-            <ProductCard key={it.id} product={it.product} />
+            <ProductCard key={it.id || it.product_id} product={it.product} />
           ))}
         </div>
       )}
