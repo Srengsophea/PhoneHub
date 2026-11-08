@@ -11,21 +11,39 @@ import {
   LogOut,
   ArrowLeft,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/stores/auth';
 import { isStaff } from '@/lib/format';
 import { useEffect } from 'react';
 
 export function AdminLayout() {
-  const { user, logout } = useAuth();
+  const { user, initialized, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && !isStaff(user.role)) {
-      navigate('/');
+    if (initialized) {
+      if (!user) {
+        navigate('/admin/login', { replace: true });
+      } else if (!isStaff(user.role)) {
+        navigate('/admin/login?unauthorized=1', { replace: true });
+      }
     }
-  }, [user, navigate]);
+  }, [user, initialized, navigate]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/admin/login');
+  };
+
+  if (!initialized || !user || !isStaff(user.role)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
 
   const navItems = [
     { label: 'Overview', to: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -96,7 +114,7 @@ export function AdminLayout() {
             <span>Back to Public Store</span>
           </Link>
           <button
-            onClick={() => logout()}
+            onClick={handleLogout}
             className="flex w-full items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition"
           >
             <LogOut className="h-4 w-4" />

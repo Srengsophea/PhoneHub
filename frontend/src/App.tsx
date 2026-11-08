@@ -14,6 +14,7 @@ import { WishlistPage } from '@/pages/WishlistPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 
 // Admin pages
+import { AdminLoginPage } from '@/pages/admin/AdminLoginPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
 import { AdminProductsPage } from '@/pages/admin/AdminProductsPage';
 import { AdminOrdersPage } from '@/pages/admin/AdminOrdersPage';
@@ -39,6 +40,9 @@ export function App() {
         <Route path="wishlist" element={<WishlistPage />} />
         <Route path="profile" element={<UserProfilePage />} />
       </Route>
+
+      {/* Dedicated Admin Login Gateway */}
+      <Route path="admin/login" element={<AdminLoginPage />} />
 
       {/* Admin Panel Experience */}
       <Route path="admin" element={<AdminLayout />}>

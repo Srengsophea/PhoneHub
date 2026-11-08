@@ -79,6 +79,7 @@ export function Footer() {
             <ul className="mt-3 space-y-2 text-sm text-zinc-600">
               <li><Link to="/orders/track" className="hover:text-zinc-900">Track Order</Link></li>
               <li><Link to="/profile" className="hover:text-zinc-900">My Account</Link></li>
+              <li><Link to="/admin/login" className="hover:text-zinc-900 text-zinc-400">Staff Portal</Link></li>
               <li><a href="#" className="hover:text-zinc-900">Warranty Check</a></li>
               <li><a href="#" className="hover:text-zinc-900">Help Center</a></li>
             </ul>
