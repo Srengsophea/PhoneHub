@@ -208,6 +208,7 @@ export interface OrderItem {
   quantity: number;
   subtotal: Money;
   product?: Product;
+  review?: Review | null;
 }
 
 export interface OrderStatusHistory {

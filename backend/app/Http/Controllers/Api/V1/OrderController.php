@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Review;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -17,13 +18,19 @@ class OrderController extends Controller
         $user = $request->user();
 
         $orders = Order::where('user_id', $user->id)
-            ->with(['items.product.primaryImage', 'payments'])
+            ->with(['items.product.primaryImage', 'items.review', 'payments'])
             ->latest()
             ->paginate(10);
+
+        $reviewedProductIds = Review::where('user_id', $user->id)
+            ->pluck('product_id')
+            ->unique()
+            ->values();
 
         return response()->json([
             'success' => true,
             'data' => $orders->items(),
+            'reviewed_product_ids' => $reviewedProductIds,
             'meta' => [
                 'current_page' => $orders->currentPage(),
                 'last_page' => $orders->lastPage(),
@@ -40,6 +47,7 @@ class OrderController extends Controller
             ->where('user_id', $user->id)
             ->with([
                 'items.product.primaryImage',
+                'items.review',
                 'statusHistories',
                 'payments',
             ])

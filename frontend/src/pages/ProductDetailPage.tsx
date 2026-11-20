@@ -4,11 +4,9 @@ import {
   Heart,
   Scale,
   ShoppingBag,
-  Star,
   ShieldCheck,
   Truck,
   RotateCcw,
-  CheckCircle2,
   ChevronRight,
   Loader2,
   CreditCard,
@@ -21,8 +19,7 @@ import { formatPrice, productImage, imageUrl } from '@/lib/format';
 import { useCart } from '@/stores/cart';
 import { useWishlist } from '@/stores/wishlist';
 import { useCompare } from '@/stores/compare';
-import { useAuth } from '@/stores/auth';
-import type { Product, ProductVariant, Specification, Review } from '@/types';
+import type { Product, ProductVariant, Specification } from '@/types';
 import toast from 'react-hot-toast';
 
 const COLOR_MAP: Record<string, string> = {
@@ -75,15 +72,8 @@ export function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [submittingReview, setSubmittingReview] = useState(false);
   const [buyingNow, setBuyingNow] = useState(false);
 
-  // Review form state
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewTitle, setReviewTitle] = useState('');
-  const [reviewComment, setReviewComment] = useState('');
-
-  const { user, openAuthModal } = useAuth();
   const { add: addToCart, setOpen: setCartOpen, loading: cartLoading } = useCart();
   const { toggle: toggleWishlist, has: inWishlist } = useWishlist();
   const { toggle: toggleCompare, has: inCompare } = useCompare();
@@ -424,30 +414,6 @@ export function ProductDetailPage() {
     if (!product) return;
     const nowIn = await toggleWishlist(product.id, product);
     toast.success(nowIn ? 'Added to favorites' : 'Removed from favorites');
-  };
-
-  const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reviewTitle.trim() || !reviewComment.trim()) {
-      toast.error('Please fill out all review fields.');
-      return;
-    }
-    setSubmittingReview(true);
-    try {
-      await api.post('/reviews', {
-        product_id: product.id,
-        rating: reviewRating,
-        title: reviewTitle,
-        comment: reviewComment,
-      });
-      toast.success('Thank you! Your review has been submitted.');
-      setReviewTitle('');
-      setReviewComment('');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Could not submit review.');
-    } finally {
-      setSubmittingReview(false);
-    }
   };
 
   return (
@@ -893,7 +859,7 @@ export function ProductDetailPage() {
         </div>
       )}
 
-      {/* Reviews & Write Review Section */}
+      {/* Verified Customer Reviews Section */}
       <div className="border-t border-zinc-200 pt-12 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -901,7 +867,7 @@ export function ProductDetailPage() {
               Customer Reviews
             </h2>
             <p className="text-sm text-zinc-500 mt-0.5">
-              Verified reviews from genuine purchasers.
+              Verified reviews from customers who purchased and received this device.
             </p>
           </div>
         </div>
@@ -923,58 +889,11 @@ export function ProductDetailPage() {
               </div>
             ))
           ) : (
-            <p className="text-sm text-zinc-500 col-span-2">No reviews yet. Be the first to leave one!</p>
+            <p className="text-sm text-zinc-500 col-span-2">
+              No verified customer reviews yet.
+            </p>
           )}
         </div>
-
-        {/* Submit Review Box */}
-        <form onSubmit={handleReviewSubmit} className="rounded-3xl border border-zinc-200 bg-zinc-50/50 p-6 space-y-4 max-w-xl">
-          <h3 className="text-base font-bold text-zinc-900">Write a Review</h3>
-
-          <div>
-            <label className="text-xs font-semibold text-zinc-600 block mb-1">Your Rating</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  type="button"
-                  key={star}
-                  onClick={() => setReviewRating(star)}
-                  className="p-1 text-amber-500"
-                >
-                  <Star className={`h-6 w-6 ${star <= reviewRating ? 'fill-current' : 'text-zinc-300'}`} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-zinc-600 block mb-1">Headline</label>
-            <input
-              type="text"
-              value={reviewTitle}
-              onChange={(e) => setReviewTitle(e.target.value)}
-              placeholder="e.g. Unbelievable camera and battery!"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-zinc-600 block mb-1">Review Details</label>
-            <textarea
-              rows={3}
-              value={reviewComment}
-              onChange={(e) => setReviewComment(e.target.value)}
-              placeholder="Share your thoughts about this phone..."
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
-              required
-            />
-          </div>
-
-          <Button type="submit" loading={submittingReview}>
-            Submit Review
-          </Button>
-        </form>
       </div>
 
       {/* Similar Products Section */}

@@ -36,6 +36,7 @@ class ReviewController extends Controller
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
+            'order_item_id' => 'nullable|integer|exists:order_items,id',
             'rating' => 'required|integer|min:1|max:5',
             'title' => 'required|string|max:255',
             'comment' => 'required|string|max:2000',
@@ -46,10 +47,24 @@ class ReviewController extends Controller
         $user = $request->user();
         $productId = (int) $validated['product_id'];
 
-        // Verify purchase: Check if user has an order containing this product
-        $orderItem = OrderItem::whereHas('order', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->where('product_id', $productId)->first();
+        // Verify purchase AND delivery: User must have a DELIVERED order containing this product
+        $orderItemQuery = OrderItem::whereHas('order', function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->where('status', 'delivered');
+        })->where('product_id', $productId);
+
+        if (!empty($validated['order_item_id'])) {
+            $orderItemQuery->where('id', (int) $validated['order_item_id']);
+        }
+
+        $orderItem = $orderItemQuery->first();
+
+        if (!$orderItem) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only review products after your order has been delivered.',
+            ], 403);
+        }
 
         // Check if user already submitted a review for this product
         $existing = Review::where('user_id', $user->id)->where('product_id', $productId)->first();
@@ -64,11 +79,11 @@ class ReviewController extends Controller
             $r = Review::create([
                 'product_id' => $productId,
                 'user_id' => $user->id,
-                'order_item_id' => $orderItem?->id,
+                'order_item_id' => $orderItem->id,
                 'rating' => $validated['rating'],
                 'title' => $validated['title'],
                 'comment' => $validated['comment'],
-                'is_verified_purchase' => (bool) $orderItem,
+                'is_verified_purchase' => true,
                 'status' => 'approved', // Auto-approved or moderated
             ]);
 

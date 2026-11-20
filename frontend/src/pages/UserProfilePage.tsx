@@ -21,8 +21,10 @@ import {
   Copy,
   ChevronRight,
   ExternalLink,
+  Star,
+  X,
 } from 'lucide-react';
-import api from '@/lib/api';
+import api, { getErrorMessage } from '@/lib/api';
 import { formatPrice, formatDateTime, orderStatusTone, statusLabel, productImage } from '@/lib/format';
 import {
   fetchUserAddresses,
@@ -33,7 +35,7 @@ import {
 } from '@/lib/addresses';
 import { InvoiceModal } from '@/components/InvoiceModal';
 import { updateLocalOrderStatus } from '@/lib/orders';
-import type { Order, Address } from '@/types';
+import type { Order, OrderItem, Address } from '@/types';
 import toast from 'react-hot-toast';
 
 export function UserProfilePage() {
@@ -46,6 +48,14 @@ export function UserProfilePage() {
   const [verifyingOrder, setVerifyingOrder] = useState<string | null>(null);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+
+  // Verified Order Review State
+  const [reviewedProductIds, setReviewedProductIds] = useState<number[]>([]);
+  const [reviewTarget, setReviewTarget] = useState<{ orderNumber: string; item: OrderItem } | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   // Addresses State
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -91,6 +101,16 @@ export function UserProfilePage() {
         const { data } = await api.get('/orders');
         const apiOrders: Order[] = Array.isArray(data?.data) ? data.data : [];
         setOrders(apiOrders);
+
+        const ids = new Set<number>(
+          Array.isArray(data?.reviewed_product_ids) ? data.reviewed_product_ids.map(Number) : []
+        );
+        apiOrders.forEach((o) => {
+          o.items?.forEach((item) => {
+            if (item.review) ids.add(item.product_id);
+          });
+        });
+        setReviewedProductIds(Array.from(ids));
       } catch (err) {
         console.error('Failed to load orders from backend:', err);
         setOrders([]);
@@ -266,6 +286,63 @@ export function UserProfilePage() {
   const handleOpenInvoice = (order: Order) => {
     setSelectedInvoiceOrder(order);
     setInvoiceModalOpen(true);
+  };
+
+  const handleOpenReview = (orderNumber: string, item: OrderItem) => {
+    setReviewTarget({ orderNumber, item });
+    setReviewRating(5);
+    setReviewTitle('');
+    setReviewComment('');
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewTarget) return;
+    if (!reviewTitle.trim() || !reviewComment.trim()) {
+      toast.error('Please fill out both the headline and review details.');
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const res = await api.post('/reviews', {
+        product_id: reviewTarget.item.product_id,
+        order_item_id: reviewTarget.item.id,
+        rating: reviewRating,
+        title: reviewTitle.trim(),
+        comment: reviewComment.trim(),
+      });
+
+      const createdReview = res.data?.data;
+      const productId = reviewTarget.item.product_id;
+
+      setReviewedProductIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.order_number === reviewTarget.orderNumber
+            ? {
+                ...o,
+                items: o.items?.map((it) =>
+                  it.id === reviewTarget.item.id ? { ...it, review: createdReview || it.review } : it
+                ),
+              }
+            : o
+        )
+      );
+
+      toast.success('Thank you! Your verified review has been published.');
+      setReviewTarget(null);
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Could not submit review. Please try again.');
+      if (msg.toLowerCase().includes('already submitted')) {
+        const productId = reviewTarget.item.product_id;
+        setReviewedProductIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
+        setReviewTarget(null);
+      }
+      toast.error(msg);
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   const copyOrderNumber = (num: string) => {
@@ -470,6 +547,7 @@ export function UserProfilePage() {
                 <div className="space-y-4">
                   {orders.map((o) => {
                     const isPaid = o.payment_status === 'paid';
+                    const isDelivered = o.status === 'delivered';
                     return (
                       <div
                         key={o.id || o.order_number}
@@ -518,28 +596,70 @@ export function UserProfilePage() {
                         {/* Order Items */}
                         <div className="space-y-3">
                           {o.items && o.items.length > 0 ? (
-                            o.items.map((item, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-xs gap-3">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className="h-10 w-10 shrink-0 rounded-md bg-zinc-50 border border-zinc-200 flex items-center justify-center p-1">
-                                    <Package className="h-5 w-5 text-zinc-400" />
+                            o.items.map((item, idx) => {
+                              const alreadyReviewed =
+                                Boolean(item.review) || reviewedProductIds.includes(item.product_id);
+                              const itemImg = item.product ? productImage(item.product) : null;
+                              return (
+                                <div key={item.id || idx} className="flex items-center justify-between text-xs gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="h-11 w-11 shrink-0 rounded-md bg-zinc-50 border border-zinc-200 flex items-center justify-center p-1 overflow-hidden">
+                                      {itemImg ? (
+                                        <img
+                                          src={itemImg}
+                                          alt={item.product_name}
+                                          className="h-full w-full object-contain"
+                                        />
+                                      ) : (
+                                        <Package className="h-5 w-5 text-zinc-400" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      {item.product?.slug ? (
+                                        <Link
+                                          to={`/products/${item.product.slug}`}
+                                          className="font-bold text-zinc-900 hover:text-brand-600 transition truncate block"
+                                        >
+                                          {item.quantity}x {item.product_name}
+                                        </Link>
+                                      ) : (
+                                        <p className="font-bold text-zinc-900 truncate">
+                                          {item.quantity}x {item.product_name}
+                                        </p>
+                                      )}
+                                      {item.variant_name && (
+                                        <p className="text-[11px] text-zinc-500 truncate">
+                                          {item.variant_name}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="truncate">
-                                    <p className="font-bold text-zinc-900 truncate">
-                                      {item.quantity}x {item.product_name}
-                                    </p>
-                                    {item.variant_name && (
-                                      <p className="text-[11px] text-zinc-500 truncate">
-                                        {item.variant_name}
-                                      </p>
+
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    {isDelivered && item.product_id && (
+                                      alreadyReviewed ? (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                                          <CheckCircle2 className="h-3.5 w-3.5" />
+                                          Reviewed
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenReview(o.order_number, item)}
+                                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-zinc-900 hover:border-zinc-950 hover:bg-zinc-50 transition"
+                                        >
+                                          <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                          Write Review
+                                        </button>
+                                      )
                                     )}
+                                    <span className="font-bold text-zinc-950">
+                                      {formatPrice(item.subtotal ?? Number(item.unit_price) * item.quantity)}
+                                    </span>
                                   </div>
                                 </div>
-                                <span className="font-bold text-zinc-950 shrink-0">
-                                  {formatPrice(item.subtotal ?? Number(item.unit_price) * item.quantity)}
-                                </span>
-                              </div>
-                            ))
+                              );
+                            })
                           ) : (
                             <div className="flex justify-between text-xs text-zinc-700">
                               <span>Standard Device Order</span>
@@ -881,6 +1001,123 @@ export function UserProfilePage() {
                   className="rounded-md font-bold bg-zinc-950 text-white hover:bg-zinc-800"
                 >
                   {editingAddress ? 'Update Address' : 'Save Address'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: WRITE VERIFIED PRODUCT REVIEW */}
+      {reviewTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-xl shadow-xl border border-zinc-200 p-6 space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+              <div>
+                <h3 className="font-extrabold text-base text-zinc-950">Write a Verified Review</h3>
+                <p className="text-[11px] text-zinc-500 mt-0.5">
+                  Order #{reviewTarget.orderNumber}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewTarget(null)}
+                className="text-zinc-400 hover:text-zinc-900 rounded-md p-1 transition"
+                aria-label="Close review modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Product Preview */}
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-50 border border-zinc-200/80">
+              <div className="h-12 w-12 shrink-0 rounded-md bg-white border border-zinc-200 flex items-center justify-center p-1 overflow-hidden">
+                {reviewTarget.item.product ? (
+                  <img
+                    src={productImage(reviewTarget.item.product)}
+                    alt={reviewTarget.item.product_name}
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <Package className="h-5 w-5 text-zinc-400" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-zinc-950 truncate">
+                  {reviewTarget.item.product_name}
+                </p>
+                {reviewTarget.item.variant_name && (
+                  <p className="text-[11px] text-zinc-500 truncate">
+                    {reviewTarget.item.variant_name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-zinc-700 block mb-1.5">Your Rating</label>
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      type="button"
+                      key={star}
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 text-amber-500 hover:scale-110 transition-transform"
+                      aria-label={`Rate ${star} stars`}
+                    >
+                      <Star
+                        className={`h-6 w-6 ${
+                          star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-xs font-semibold text-zinc-600">
+                    {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][reviewRating]}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-700 block mb-1">Headline *</label>
+                <input
+                  type="text"
+                  value={reviewTitle}
+                  onChange={(e) => setReviewTitle(e.target.value)}
+                  placeholder="e.g. Incredible camera and battery life!"
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-700 block mb-1">Review Details *</label>
+                <textarea
+                  rows={4}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Share your experience with this device..."
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900 resize-none"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setReviewTarget(null)}
+                  className="rounded-md"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  loading={submittingReview}
+                  className="rounded-md font-bold bg-zinc-950 text-white hover:bg-zinc-800"
+                >
+                  Submit Review
                 </Button>
               </div>
             </form>

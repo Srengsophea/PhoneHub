@@ -127,8 +127,9 @@ class ProductController extends Controller
                 'variants.images',
                 'images',
                 'specifications',
-                'reviews.user',
-                'reviews.images',
+                'reviews' => function ($q) {
+                    $q->where('status', 'approved')->with(['user', 'images'])->latest();
+                },
             ])
             ->firstOrFail();
 
