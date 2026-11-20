@@ -132,9 +132,20 @@ class ProductController extends Controller
             ])
             ->firstOrFail();
 
+        $similarProducts = Product::active()
+            ->where('id', '!=', $product->id)
+            ->with(['brand', 'category', 'variants', 'images', 'primaryImage'])
+            ->orderByRaw(
+                'CASE WHEN brand_id = ? THEN 0 WHEN category_id = ? THEN 1 ELSE 2 END ASC, ABS(base_price - ?) ASC',
+                [$product->brand_id ?? 0, $product->category_id ?? 0, (float) $product->base_price]
+            )
+            ->limit(4)
+            ->get();
+
         return response()->json([
             'success' => true,
             'data' => $product,
+            'similar_products' => $similarProducts,
         ]);
     }
 

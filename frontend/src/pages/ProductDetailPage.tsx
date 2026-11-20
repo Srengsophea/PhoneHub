@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Button, Stars } from '@/components/ui';
+import { ProductCard } from '@/components/ProductCard';
 import { formatPrice, productImage, imageUrl } from '@/lib/format';
 import { useCart } from '@/stores/cart';
 import { useWishlist } from '@/stores/wishlist';
@@ -66,6 +67,8 @@ export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedStorage, setSelectedStorage] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
@@ -86,10 +89,90 @@ export function ProductDetailPage() {
   const { toggle: toggleCompare, has: inCompare } = useCompare();
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadSimilarFallback(current: Product) {
+      setLoadingSimilar(true);
+      try {
+        const candidates = new Map<number, Product>();
+        const addItems = (items: Product[] | undefined) => {
+          (items || []).forEach((item) => {
+            if (item && item.id !== current.id && !candidates.has(item.id)) {
+              candidates.set(item.id, item);
+            }
+          });
+        };
+
+        // 1. Prioritize same brand devices
+        if (current.brand?.slug) {
+          try {
+            const brandRes = await api.get('/products', {
+              params: { brand: current.brand.slug, per_page: 8 },
+            });
+            addItems(brandRes.data?.data);
+          } catch {
+            // ignore and continue to fallback
+          }
+        }
+
+        // 2. Supplement with same category or general catalog if fewer than 4
+        if (candidates.size < 4) {
+          try {
+            const catRes = await api.get('/products', {
+              params: current.category?.slug
+                ? { category: current.category.slug, per_page: 12 }
+                : { per_page: 12 },
+            });
+            addItems(catRes.data?.data);
+          } catch {
+            // ignore
+          }
+        }
+
+        if (candidates.size < 4) {
+          try {
+            const allRes = await api.get('/products', { params: { per_page: 12 } });
+            addItems(allRes.data?.data);
+          } catch {
+            // ignore
+          }
+        }
+
+        const currentPrice = Number(current.sale_price ?? current.base_price ?? 0);
+        const ranked = Array.from(candidates.values())
+          .sort((a, b) => {
+            const aBrand = a.brand_id === current.brand_id ? 0 : 1;
+            const bBrand = b.brand_id === current.brand_id ? 0 : 1;
+            if (aBrand !== bBrand) return aBrand - bBrand;
+
+            const aCat = a.category_id === current.category_id ? 0 : 1;
+            const bCat = b.category_id === current.category_id ? 0 : 1;
+            if (aCat !== bCat) return aCat - bCat;
+
+            const aPriceDiff = Math.abs(Number(a.sale_price ?? a.base_price ?? 0) - currentPrice);
+            const bPriceDiff = Math.abs(Number(b.sale_price ?? b.base_price ?? 0) - currentPrice);
+            return aPriceDiff - bPriceDiff;
+          })
+          .slice(0, 4);
+
+        if (!cancelled) {
+          setSimilarProducts(ranked);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSimilar(false);
+        }
+      }
+    }
+
     async function loadProduct() {
       setLoading(true);
+      setQuantity(1);
+      setSimilarProducts([]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       try {
         const { data } = await api.get(`/products/${slug}`);
+        if (cancelled) return;
         const p: Product | undefined = data?.data;
         if (p) {
           setProduct(p);
@@ -106,19 +189,32 @@ export function ProductDetailPage() {
               null;
             setSelectedImage(initialColorImg ? imageUrl(initialColorImg) : productImage(p));
           } else {
+            setSelectedVariant(null);
+            setSelectedStorage('');
+            setSelectedColor('');
             setSelectedImage(productImage(p));
+          }
+
+          if (Array.isArray(data?.similar_products) && data.similar_products.length > 0) {
+            setSimilarProducts(data.similar_products.filter((item: Product) => item.id !== p.id).slice(0, 4));
+          } else {
+            loadSimilarFallback(p);
           }
         } else {
           setProduct(null);
         }
       } catch (err) {
         console.error(err);
-        setProduct(null);
+        if (!cancelled) setProduct(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     if (slug) loadProduct();
+
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   if (loading) {
@@ -880,6 +976,57 @@ export function ProductDetailPage() {
           </Button>
         </form>
       </div>
+
+      {/* Similar Products Section */}
+      {(loadingSimilar || similarProducts.length > 0) && (
+        <section className="border-t border-zinc-200 pt-12 space-y-6">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
+                You May Also Like
+              </span>
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-900 mt-1">
+                Similar Products
+              </h2>
+              <p className="text-sm text-zinc-500 mt-0.5">
+                {product.brand
+                  ? `More devices from ${product.brand.name} and comparable flagships.`
+                  : 'Explore comparable smartphones in our catalog.'}
+              </p>
+            </div>
+            <Link
+              to={product.brand ? `/products?brand=${product.brand.slug}` : '/products'}
+              className="text-sm font-semibold text-zinc-700 hover:text-zinc-950 flex items-center gap-1 shrink-0 transition"
+            >
+              View All <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          {loadingSimilar ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-3xl border border-zinc-200/80 bg-white p-4 space-y-4"
+                >
+                  <div className="h-64 w-full rounded-2xl bg-zinc-100 overflow-hidden relative before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent" />
+                  <div className="space-y-2 p-2">
+                    <div className="h-3 w-16 rounded bg-zinc-100" />
+                    <div className="h-4 w-3/4 rounded bg-zinc-100" />
+                    <div className="h-6 w-24 rounded bg-zinc-100 mt-3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+              {similarProducts.map((item) => (
+                <ProductCard key={item.id} product={item} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
