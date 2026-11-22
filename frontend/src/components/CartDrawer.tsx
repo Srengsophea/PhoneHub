@@ -124,7 +124,12 @@ export function CartDrawer() {
                   <p className="text-sm font-semibold text-zinc-900 truncate">{item.product.name}</p>
                   {item.variant && (
                     <p className="text-xs text-zinc-500">
-                      {item.variant.ram} / {item.variant.storage} • {item.variant.color}
+                      {[
+                        [item.variant.ram, item.variant.storage].filter(Boolean).join(' / '),
+                        item.variant.color,
+                      ]
+                        .filter(Boolean)
+                        .join(' • ')}
                     </p>
                   )}
                   <div className="mt-1 flex items-baseline gap-2 flex-wrap">
