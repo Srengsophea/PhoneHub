@@ -19,7 +19,6 @@ import {
   ShoppingBag,
   Smartphone,
   Star,
-  Trophy,
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -110,8 +109,6 @@ function estimatePerformanceScore(product: Product): number {
   const price = productPricing(product).current;
 
   let base = 62;
-
-  // Chipset-based performance estimation
   if (
     cpu.includes('a18 pro') ||
     cpu.includes('8 elite') ||
@@ -158,7 +155,6 @@ function estimatePerformanceScore(product: Product): number {
   } else if (cpu.includes('helio') || cpu.includes('unisoc')) {
     base = 55;
   } else {
-    // Fallback heuristic using price tier if chipset text isn't recognized
     if (price >= 1000) base = 94;
     else if (price >= 750) base = 86;
     else if (price >= 450) base = 76;
@@ -166,7 +162,6 @@ function estimatePerformanceScore(product: Product): number {
     else base = 58;
   }
 
-  // Slight boost for higher RAM (up to +2 pts, capped at 99)
   const ramBonus = maxRam >= 16 ? 2 : maxRam >= 12 ? 1 : 0;
   return Math.min(99, base + ramBonus);
 }
@@ -179,6 +174,20 @@ function performanceLabel(score: number): string {
   return 'Essential';
 }
 
+function isStrictMax(val: number, all: number[]): boolean {
+  if (all.length <= 1 || val <= 0) return false;
+  const max = Math.max(...all);
+  const min = Math.min(...all);
+  return max > min && val === max;
+}
+
+function isStrictMin(val: number, all: number[]): boolean {
+  if (all.length <= 1 || val <= 0) return false;
+  const max = Math.max(...all);
+  const min = Math.min(...all);
+  return max > min && val === min;
+}
+
 export function ComparePage() {
   const { items, remove, clear } = useCompare();
   const { add: addToCart } = useCart();
@@ -188,7 +197,6 @@ export function ComparePage() {
   const [addingId, setAddingId] = useState<number | null>(null);
   const [diffOnly, setDiffOnly] = useState(false);
 
-  // Fetch full specifications & variants for every compared phone
   useEffect(() => {
     let cancelled = false;
     const missing = items.filter((p) => !detailsMap[p.id] && (!p.specifications || p.specifications.length === 0));
@@ -231,7 +239,6 @@ export function ComparePage() {
     [items, detailsMap]
   );
 
-  // Compute comparison winners & metrics across all compared phones
   const metrics = useMemo(() => {
     const perPhone = phones.map((p) => {
       const storages = getStorageOptions(p);
@@ -243,6 +250,7 @@ export function ComparePage() {
       const price = productPricing(p).current;
       return {
         id: p.id,
+        name: p.name,
         storages,
         rams,
         maxStorageGB,
@@ -263,16 +271,25 @@ export function ComparePage() {
       };
     });
 
-    const maxPerf = Math.max(0, ...perPhone.map((m) => m.perfScore));
-    const maxRam = Math.max(0, ...perPhone.map((m) => m.maxRamGB));
-    const maxStorage = Math.max(0, ...perPhone.map((m) => m.maxStorageGB));
-    const maxBattery = Math.max(0, ...perPhone.map((m) => m.batteryMah));
-    const minPrice = perPhone.length > 0 ? Math.min(...perPhone.map((m) => m.price)) : 0;
+    const perfScores = perPhone.map((m) => m.perfScore);
+    const ramValues = perPhone.map((m) => m.maxRamGB);
+    const storageValues = perPhone.map((m) => m.maxStorageGB);
+    const batteryValues = perPhone.map((m) => m.batteryMah);
+    const priceValues = perPhone.map((m) => m.price);
 
-    return { perPhone, maxPerf, maxRam, maxStorage, maxBattery, minPrice };
+    return {
+      perPhone,
+      perfScores,
+      ramValues,
+      storageValues,
+      batteryValues,
+      priceValues,
+      maxRam: Math.max(0, ...ramValues),
+      maxStorage: Math.max(0, ...storageValues),
+      maxBattery: Math.max(0, ...batteryValues),
+    };
   }, [phones]);
 
-  // Extra specs not already covered in core sections
   const extraSpecNames = useMemo(() => {
     const covered = [
       'processor',
@@ -336,7 +353,7 @@ export function ComparePage() {
         </div>
         <h2 className="text-2xl font-extrabold text-zinc-950 tracking-tight">No phones to compare</h2>
         <p className="mt-2 text-sm text-zinc-500 leading-relaxed">
-          Select up to 4 smartphones from the catalog to compare their processor performance, RAM, storage space, camera, and battery side by side.
+          Select up to 4 smartphones from the catalog to compare their performance, storage space, camera, and battery side by side.
         </p>
         <Link to="/products">
           <Button className="mt-6 rounded-xl px-6">Browse Smartphones</Button>
@@ -346,604 +363,568 @@ export function ComparePage() {
   }
 
   const colCount = phones.length;
-  const gridColsClass =
+  const maxWidthClass = colCount <= 2 ? 'max-w-5xl mx-auto' : 'max-w-7xl mx-auto';
+  const phoneGridCols =
     colCount === 1
-      ? 'grid-cols-[200px_minmax(240px,1fr)]'
+      ? 'grid-cols-1 max-w-sm mx-auto'
       : colCount === 2
-      ? 'grid-cols-[200px_repeat(2,minmax(220px,1fr))]'
+      ? 'grid-cols-2'
       : colCount === 3
-      ? 'grid-cols-[190px_repeat(3,minmax(210px,1fr))]'
-      : 'grid-cols-[180px_repeat(4,minmax(195px,1fr))]';
+      ? 'grid-cols-3'
+      : 'grid-cols-4';
+  const specGridCols =
+    colCount === 1
+      ? 'grid-cols-[170px_1fr]'
+      : colCount === 2
+      ? 'grid-cols-[180px_repeat(2,minmax(0,1fr))]'
+      : colCount === 3
+      ? 'grid-cols-[170px_repeat(3,minmax(0,1fr))]'
+      : 'grid-cols-[160px_repeat(4,minmax(0,1fr))]';
+
+  // Quick verdict winners (when comparing 2+ devices)
+  const topPerfPhone =
+    phones.length > 1
+      ? metrics.perPhone.reduce((best, cur) => (cur.perfScore > best.perfScore ? cur : best), metrics.perPhone[0])
+      : null;
+  const topSpacePhone =
+    phones.length > 1
+      ? metrics.perPhone.reduce(
+          (best, cur) =>
+            cur.maxStorageGB > best.maxStorageGB ||
+            (cur.maxStorageGB === best.maxStorageGB && cur.maxRamGB > best.maxRamGB)
+              ? cur
+              : best,
+          metrics.perPhone[0]
+        )
+      : null;
+  const bestValuePhone =
+    phones.length > 1
+      ? metrics.perPhone.reduce((best, cur) => (cur.price < best.price ? cur : best), metrics.perPhone[0])
+      : null;
 
   return (
-    <div className="container-page py-10 space-y-8">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-zinc-200">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-red-600">
-            Side-by-Side Specs &amp; Benchmarks
-          </span>
-          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mt-1">
-            Compare Smartphones
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1 flex items-center gap-2">
-            <span>Comparing {phones.length} of 4 devices — performance, space, display &amp; battery</span>
-            {loadingSpecs && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading full specs...
-              </span>
-            )}
-          </p>
-        </div>
+    <div className="container-page py-10 sm:py-12">
+      <div className={`${maxWidthClass} space-y-10`}>
+        {/* Clean Editorial Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-zinc-200/80">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-red-600">
+              Side-by-Side Comparison
+            </span>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950 mt-1">
+              Compare Models
+            </h1>
+            <p className="text-sm text-zinc-500 mt-1 flex items-center gap-2">
+              <span>Comparing {phones.length} of 4 devices</span>
+              {loadingSpecs && (
+                <span className="inline-flex items-center gap-1 text-xs text-zinc-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Syncing specs...
+                </span>
+              )}
+            </p>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {phones.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setDiffOnly((d) => !d)}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border text-xs font-bold transition cursor-pointer ${
-                diffOnly
-                  ? 'border-zinc-950 bg-zinc-950 text-white'
-                  : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'
-              }`}
-            >
-              <span
-                className={`h-3.5 w-3.5 rounded-xs flex items-center justify-center border ${
-                  diffOnly ? 'border-white bg-white text-zinc-950' : 'border-zinc-300'
+          <div className="flex flex-wrap items-center gap-2">
+            {phones.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setDiffOnly((d) => !d)}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                  diffOnly
+                    ? 'border-zinc-950 bg-zinc-950 text-white'
+                    : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'
                 }`}
               >
-                {diffOnly && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-              </span>
-              Differences Only
-            </button>
-          )}
-          <Button variant="outline" size="sm" onClick={clear} className="rounded-lg">
-            Clear All
-          </Button>
-          {phones.length < 4 && (
-            <Link to="/products">
-              <Button size="sm" className="rounded-lg gap-1 bg-zinc-950 text-white hover:bg-zinc-800">
-                <Plus className="h-4 w-4" /> Add Phone
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Main Comparison Matrix */}
-      <div className="overflow-x-auto pb-4">
-        <div className="min-w-[780px] rounded-2xl border border-zinc-200/90 bg-white shadow-soft overflow-hidden">
-          {/* Sticky Top Phone Header Cards */}
-          <div className={`grid ${gridColsClass} border-b border-zinc-200 bg-zinc-50/50`}>
-            <div className="p-5 flex flex-col justify-end border-r border-zinc-200/70">
-              <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">Overview</p>
-              <p className="text-sm font-bold text-zinc-900 mt-1">
-                {phones.length} {phones.length === 1 ? 'Device' : 'Devices'} Selected
-              </p>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Top performer, largest storage space, and best value are automatically highlighted.
-              </p>
-            </div>
-
-            {phones.map((phone, idx) => {
-              const m = metrics.perPhone[idx];
-              const isBestPrice = phones.length > 1 && m.price === metrics.minPrice;
-              const isAdding = addingId === phone.id;
-
-              return (
-                <div
-                  key={phone.id}
-                  className={`p-5 flex flex-col justify-between bg-white relative ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
+                <span
+                  className={`h-3.5 w-3.5 rounded-xs flex items-center justify-center border ${
+                    diffOnly ? 'border-white bg-white text-zinc-950' : 'border-zinc-300'
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => remove(phone.id)}
-                    className="absolute top-3 right-3 h-7 w-7 rounded-full border border-zinc-200 bg-white text-zinc-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition cursor-pointer"
-                    title="Remove from comparison"
-                    aria-label={`Remove ${phone.name}`}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                  {diffOnly && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                </span>
+                Differences Only
+              </button>
+            )}
+            <Button variant="outline" size="sm" onClick={clear} className="rounded-xl">
+              Clear All
+            </Button>
+            {phones.length < 4 && (
+              <Link to="/products">
+                <Button size="sm" className="rounded-xl gap-1 bg-zinc-950 text-white hover:bg-zinc-800">
+                  <Plus className="h-4 w-4" /> Add Phone
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
 
-                  <div>
+        {/* Overflow Container for Responsive Columns */}
+        <div className="overflow-x-auto pb-4">
+          <div className={colCount >= 3 ? 'min-w-[760px]' : 'min-w-[540px]'}>
+            {/* Top Showcase Cards (Apple-style Airy Centered Columns) */}
+            <div className={`grid ${colCount > 1 ? specGridCols : phoneGridCols} gap-0 items-end pb-8`}>
+              {colCount > 1 && <div />}
+              {phones.map((phone, idx) => {
+                const m = metrics.perPhone[idx];
+                const isBestPrice = isStrictMin(m.price, metrics.priceValues);
+                const isAdding = addingId === phone.id;
+
+                return (
+                  <div
+                    key={phone.id}
+                    className="relative px-4 sm:px-6 flex flex-col items-center text-center"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => remove(phone.id)}
+                      className="absolute top-0 right-4 h-7 w-7 rounded-full border border-zinc-200/80 bg-white text-zinc-400 hover:text-zinc-950 hover:border-zinc-400 flex items-center justify-center transition cursor-pointer"
+                      title="Remove from comparison"
+                      aria-label={`Remove ${phone.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+
+                    {/* Seamless Phone Image Stage */}
                     <Link
                       to={`/products/${phone.slug}`}
-                      className="block aspect-square max-h-44 mx-auto p-3 flex items-center justify-center group"
+                      className="group block h-44 sm:h-52 w-full flex items-center justify-center mb-4"
                     >
                       <img
                         src={productImage(phone)}
                         alt={phone.name}
-                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                        className="h-full max-w-[180px] object-contain drop-shadow-md transition-transform duration-300 group-hover:scale-105"
                       />
                     </Link>
 
-                    <div className="mt-3 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-600">
-                          {phone.brand?.name || 'Smartphone'}
-                        </span>
-                        <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-zinc-600">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                          {Number(phone.rating_cache || 5).toFixed(1)}
-                        </span>
-                      </div>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
+                      {phone.brand?.name || 'Smartphone'}
+                    </span>
 
-                      <Link
-                        to={`/products/${phone.slug}`}
-                        className="font-extrabold text-sm text-zinc-950 hover:text-brand-600 transition line-clamp-1 block"
+                    <Link
+                      to={`/products/${phone.slug}`}
+                      className="mt-1 text-base sm:text-lg font-extrabold text-zinc-950 hover:text-brand-600 transition line-clamp-1"
+                    >
+                      {phone.name}
+                    </Link>
+
+                    <div className="mt-1.5 flex items-center justify-center gap-2 text-xs text-zinc-500">
+                      <span className="inline-flex items-center gap-1 font-semibold text-zinc-800">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        {Number(phone.rating_cache || 5).toFixed(1)}
+                      </span>
+                      {isBestPrice && (
+                        <>
+                          <span className="text-zinc-300">•</span>
+                          <span className="font-bold text-emerald-600">Best Price</span>
+                        </>
+                      )}
+                    </div>
+
+                    <p className="mt-2.5 text-xl font-black text-zinc-950 tracking-tight">
+                      {formatPrice(m.price)}
+                    </p>
+
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <Button
+                        size="sm"
+                        disabled={isAdding}
+                        onClick={() => handleAddCart(phone)}
+                        className="rounded-full px-5 gap-1.5 text-xs font-bold bg-zinc-950 text-white hover:bg-zinc-800"
                       >
-                        {phone.name}
-                      </Link>
+                        <ShoppingBag className="h-3.5 w-3.5" />
+                        {isAdding ? 'Adding...' : 'Add to Cart'}
+                      </Button>
+                    </div>
 
-                      <div className="flex items-center gap-2 pt-1 flex-wrap">
-                        <span className="text-lg font-black text-zinc-950">
-                          {formatPrice(m.price)}
-                        </span>
-                        {isBestPrice && (
-                          <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                            Best Price
+                    <Link
+                      to={`/products/${phone.slug}`}
+                      className="mt-2.5 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                    >
+                      View full details
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Quick Summary Strip (Clean Light Monochrome) */}
+            {phones.length > 1 && topPerfPhone && topSpacePhone && bestValuePhone && (
+              <div className="grid grid-cols-3 gap-3 mb-10 rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-4">
+                <div className="px-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <Cpu className="h-3.5 w-3.5 text-zinc-600" /> Top Performance
+                  </p>
+                  <p className="text-sm font-extrabold text-zinc-950 mt-1 truncate">
+                    {topPerfPhone.name}
+                  </p>
+                  <p className="text-xs text-zinc-500 truncate mt-0.5">
+                    Score {topPerfPhone.perfScore}/100 · {topPerfPhone.rams[topPerfPhone.rams.length - 1] || 'Flagship'} RAM
+                  </p>
+                </div>
+
+                <div className="px-2 border-l border-zinc-200/80">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <HardDrive className="h-3.5 w-3.5 text-zinc-600" /> Most Space &amp; Memory
+                  </p>
+                  <p className="text-sm font-extrabold text-zinc-950 mt-1 truncate">
+                    {topSpacePhone.name}
+                  </p>
+                  <p className="text-xs text-zinc-500 truncate mt-0.5">
+                    Up to {formatGB(topSpacePhone.maxStorageGB)} · {topSpacePhone.maxRamGB > 0 ? `${topSpacePhone.maxRamGB}GB RAM` : 'Pro Storage'}
+                  </p>
+                </div>
+
+                <div className="px-2 border-l border-zinc-200/80">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5 text-zinc-600" /> Best Value
+                  </p>
+                  <p className="text-sm font-extrabold text-zinc-950 mt-1 truncate">
+                    {bestValuePhone.name}
+                  </p>
+                  <p className="text-xs text-emerald-600 font-semibold mt-0.5">
+                    Starting at {formatPrice(bestValuePhone.price)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* SECTION 1: PERFORMANCE */}
+            <div className="space-y-0">
+              <div className="flex items-center gap-2 pb-3 border-b-2 border-zinc-950">
+                <Cpu className="h-4 w-4 text-zinc-900" />
+                <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-950">
+                  Performance
+                </h2>
+              </div>
+
+              {/* Performance Score */}
+              {shouldShowRow(metrics.perfScores) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-5 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Performance Index</div>
+                  {metrics.perPhone.map((m) => {
+                    const isWinner = isStrictMax(m.perfScore, metrics.perfScores);
+                    return (
+                      <div key={m.id} className="px-4 sm:px-6 space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-base font-black text-zinc-950">
+                            {m.perfScore}
+                            <span className="text-xs font-medium text-zinc-400">/100</span>
                           </span>
+                          <span
+                            className={`text-[11px] font-semibold ${
+                              isWinner ? 'text-emerald-600' : 'text-zinc-400'
+                            }`}
+                          >
+                            {isWinner ? '• Top Power' : performanceLabel(m.perfScore)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isWinner ? 'bg-zinc-950' : 'bg-zinc-300'
+                            }`}
+                            style={{ width: `${m.perfScore}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Processor */}
+              {shouldShowRow(metrics.perPhone.map((m) => m.processor)) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Processor / Chipset</div>
+                  {metrics.perPhone.map((m) => (
+                    <div key={m.id} className="px-4 sm:px-6 text-sm font-semibold text-zinc-900">
+                      {m.processor || '—'}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* GPU */}
+              {metrics.perPhone.some((m) => m.gpu) && shouldShowRow(metrics.perPhone.map((m) => m.gpu)) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Graphics (GPU)</div>
+                  {metrics.perPhone.map((m) => (
+                    <div key={m.id} className="px-4 sm:px-6 text-sm text-zinc-700">
+                      {m.gpu || '—'}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* RAM */}
+              {shouldShowRow(metrics.perPhone.map((m) => m.rams.join(','))) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-5 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">RAM (Memory)</div>
+                  {metrics.perPhone.map((m) => {
+                    const isWinner = isStrictMax(m.maxRamGB, metrics.ramValues);
+                    const pct = metrics.maxRam > 0 ? Math.min(100, Math.round((m.maxRamGB / metrics.maxRam) * 100)) : 0;
+                    return (
+                      <div key={m.id} className="px-4 sm:px-6 space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-bold text-zinc-950">
+                            {m.rams.length > 0 ? m.rams.join(' / ') : '—'}
+                          </span>
+                          {isWinner && (
+                            <span className="text-[11px] font-semibold text-emerald-600">• More RAM</span>
+                          )}
+                        </div>
+                        {m.maxRamGB > 0 && (
+                          <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${isWinner ? 'bg-zinc-950' : 'bg-zinc-300'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
                         )}
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      size="sm"
-                      disabled={isAdding}
-                      onClick={() => handleAddCart(phone)}
-                      className="flex-1 gap-1.5 rounded-lg text-xs font-bold bg-zinc-950 text-white hover:bg-zinc-800"
-                    >
-                      <ShoppingBag className="h-3.5 w-3.5" />
-                      {isAdding ? 'Adding...' : 'Add to Cart'}
-                    </Button>
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
 
-          {/* SECTION 1: PERFORMANCE & POWER */}
-          <div className="bg-zinc-950 text-white px-5 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-            <Cpu className="h-4 w-4 text-red-500" />
-            <span>Performance &amp; Processing Power</span>
-          </div>
-
-          {/* Performance Index Bar */}
-          {shouldShowRow(metrics.perPhone.map((m) => m.perfScore)) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                Performance Score
+            {/* SECTION 2: SPACE & STORAGE */}
+            <div className="pt-10 space-y-0">
+              <div className="flex items-center gap-2 pb-3 border-b-2 border-zinc-950">
+                <HardDrive className="h-4 w-4 text-zinc-900" />
+                <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-950">
+                  Space &amp; Storage
+                </h2>
               </div>
-              {metrics.perPhone.map((m, idx) => {
-                const isWinner = phones.length > 1 && m.perfScore === metrics.maxPerf;
-                return (
-                  <div
-                    key={m.id}
-                    className={`p-4 space-y-2 ${idx < phones.length - 1 ? 'border-r border-zinc-100' : ''} ${
-                      isWinner ? 'bg-emerald-50/35' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-black text-zinc-950">
-                        {m.perfScore}
-                        <span className="text-[11px] font-medium text-zinc-400">/100</span>
-                      </span>
-                      {isWinner ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                          <Trophy className="h-2.5 w-2.5" /> Top Power
-                        </span>
+
+              {/* Max Storage Space */}
+              {shouldShowRow(metrics.storageValues) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-5 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Max Storage</div>
+                  {metrics.perPhone.map((m) => {
+                    const isWinner = isStrictMax(m.maxStorageGB, metrics.storageValues);
+                    const pct =
+                      metrics.maxStorage > 0
+                        ? Math.min(100, Math.round((m.maxStorageGB / metrics.maxStorage) * 100))
+                        : 0;
+                    return (
+                      <div key={m.id} className="px-4 sm:px-6 space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-bold text-zinc-950">
+                            Up to {formatGB(m.maxStorageGB)}
+                          </span>
+                          {isWinner && (
+                            <span className="text-[11px] font-semibold text-emerald-600">• Most Space</span>
+                          )}
+                        </div>
+                        {m.maxStorageGB > 0 && (
+                          <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${isWinner ? 'bg-zinc-950' : 'bg-zinc-300'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Available Storage Tiers */}
+              {shouldShowRow(metrics.perPhone.map((m) => m.storages.join(','))) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Storage Options</div>
+                  {metrics.perPhone.map((m) => (
+                    <div key={m.id} className="px-4 sm:px-6 flex flex-wrap gap-1.5">
+                      {m.storages.length > 0 ? (
+                        m.storages.map((st) => (
+                          <span
+                            key={st}
+                            className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-800 bg-white"
+                          >
+                            {st}
+                          </span>
+                        ))
                       ) : (
-                        <span className="text-[11px] font-medium text-zinc-500">
-                          {performanceLabel(m.perfScore)}
-                        </span>
+                        <span className="text-sm text-zinc-400">—</span>
                       )}
                     </div>
-                    <div className="h-2 w-full rounded-full bg-zinc-100 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          isWinner ? 'bg-emerald-500' : 'bg-zinc-900'
-                        }`}
-                        style={{ width: `${m.perfScore}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Processor / Chipset */}
-          {shouldShowRow(metrics.perPhone.map((m) => m.processor)) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                Processor / Chipset
-              </div>
-              {metrics.perPhone.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className={`p-4 text-xs font-semibold text-zinc-900 flex items-center ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                  }`}
-                >
-                  {m.processor || '—'}
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* GPU */}
-          {metrics.perPhone.some((m) => m.gpu) && shouldShowRow(metrics.perPhone.map((m) => m.gpu)) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                GPU / Graphics
-              </div>
-              {metrics.perPhone.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className={`p-4 text-xs font-medium text-zinc-700 flex items-center ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                  }`}
-                >
-                  {m.gpu || 'Integrated Flagship GPU'}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* RAM / Memory */}
-          {shouldShowRow(metrics.perPhone.map((m) => m.rams.join(','))) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                RAM (Memory)
-              </div>
-              {metrics.perPhone.map((m, idx) => {
-                const isWinner = phones.length > 1 && m.maxRamGB > 0 && m.maxRamGB === metrics.maxRam;
-                const pct = metrics.maxRam > 0 ? Math.min(100, Math.round((m.maxRamGB / metrics.maxRam) * 100)) : 0;
-                return (
-                  <div
-                    key={m.id}
-                    className={`p-4 space-y-2 ${idx < phones.length - 1 ? 'border-r border-zinc-100' : ''} ${
-                      isWinner ? 'bg-emerald-50/35' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-zinc-950">
-                        {m.rams.length > 0 ? m.rams.join(' / ') : '—'}
-                      </span>
-                      {isWinner && (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                          Max RAM
-                        </span>
+              {/* Color Finishes */}
+              {shouldShowRow(metrics.perPhone.map((m) => m.colors.map((c) => c.name).join(','))) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Color Finishes</div>
+                  {metrics.perPhone.map((m) => (
+                    <div key={m.id} className="px-4 sm:px-6 flex flex-wrap items-center gap-3">
+                      {m.colors.length > 0 ? (
+                        m.colors.map((c) => (
+                          <span
+                            key={c.name}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-700"
+                          >
+                            <span
+                              className="h-3.5 w-3.5 rounded-full border border-black/20 shrink-0"
+                              style={{ backgroundColor: c.hex }}
+                            />
+                            {c.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-zinc-400">—</span>
                       )}
                     </div>
-                    {m.maxRamGB > 0 && (
-                      <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${isWinner ? 'bg-emerald-500' : 'bg-zinc-700'}`}
-                          style={{ width: `${pct}%` }}
-                        />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 3: DISPLAY & CAMERA */}
+            <div className="pt-10 space-y-0">
+              <div className="flex items-center gap-2 pb-3 border-b-2 border-zinc-950">
+                <Smartphone className="h-4 w-4 text-zinc-900" />
+                <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-950">
+                  Display &amp; Camera
+                </h2>
+              </div>
+
+              {shouldShowRow(metrics.perPhone.map((m) => m.screenSize)) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Display</div>
+                  {metrics.perPhone.map((m) => (
+                    <div key={m.id} className="px-4 sm:px-6 text-sm font-medium text-zinc-900">
+                      {m.screenSize || '—'}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {metrics.perPhone.some((m) => m.resolution) &&
+                shouldShowRow(metrics.perPhone.map((m) => m.resolution)) && (
+                  <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                    <div className="pr-4 text-xs font-semibold text-zinc-500">Resolution</div>
+                    {metrics.perPhone.map((m) => (
+                      <div key={m.id} className="px-4 sm:px-6 text-sm text-zinc-700">
+                        {m.resolution || '—'}
                       </div>
-                    )}
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                )}
 
-          {/* SECTION 2: SPACE & STORAGE */}
-          <div className="bg-zinc-900 text-white px-5 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-            <HardDrive className="h-4 w-4 text-brand-400" />
-            <span>Space &amp; Storage Capacity</span>
-          </div>
-
-          {/* Max Space Comparison */}
-          {shouldShowRow(metrics.perPhone.map((m) => m.maxStorageGB)) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                Max Storage Space
-              </div>
-              {metrics.perPhone.map((m, idx) => {
-                const isWinner =
-                  phones.length > 1 && m.maxStorageGB > 0 && m.maxStorageGB === metrics.maxStorage;
-                const pct =
-                  metrics.maxStorage > 0
-                    ? Math.min(100, Math.round((m.maxStorageGB / metrics.maxStorage) * 100))
-                    : 0;
-                return (
-                  <div
-                    key={m.id}
-                    className={`p-4 space-y-2 ${idx < phones.length - 1 ? 'border-r border-zinc-100' : ''} ${
-                      isWinner ? 'bg-brand-50/40' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-black text-zinc-950">
-                        Up to {formatGB(m.maxStorageGB)}
-                      </span>
-                      {isWinner && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-bold text-brand-700">
-                          <HardDrive className="h-2.5 w-2.5" /> Most Space
-                        </span>
-                      )}
+              {shouldShowRow(metrics.perPhone.map((m) => m.mainCamera)) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-start`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500 flex items-center gap-1.5 pt-0.5">
+                    <Camera className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                    Main Camera
+                  </div>
+                  {metrics.perPhone.map((m) => (
+                    <div key={m.id} className="px-4 sm:px-6 text-sm text-zinc-800 leading-relaxed">
+                      {m.mainCamera || '—'}
                     </div>
-                    {m.maxStorageGB > 0 && (
-                      <div className="h-2 w-full rounded-full bg-zinc-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isWinner ? 'bg-brand-600' : 'bg-zinc-800'
-                          }`}
-                          style={{ width: `${pct}%` }}
-                        />
+                  ))}
+                </div>
+              )}
+
+              {metrics.perPhone.some((m) => m.frontCamera) &&
+                shouldShowRow(metrics.perPhone.map((m) => m.frontCamera)) && (
+                  <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                    <div className="pr-4 text-xs font-semibold text-zinc-500">Front Camera</div>
+                    {metrics.perPhone.map((m) => (
+                      <div key={m.id} className="px-4 sm:px-6 text-sm text-zinc-700">
+                        {m.frontCamera || '—'}
                       </div>
-                    )}
+                    ))}
                   </div>
-                );
-              })}
+                )}
             </div>
-          )}
 
-          {/* Available Storage Options Pills */}
-          {shouldShowRow(metrics.perPhone.map((m) => m.storages.join(','))) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                Available Space Tiers
+            {/* SECTION 4: BATTERY & WARRANTY */}
+            <div className="pt-10 space-y-0">
+              <div className="flex items-center gap-2 pb-3 border-b-2 border-zinc-950">
+                <BatteryCharging className="h-4 w-4 text-zinc-900" />
+                <h2 className="text-sm font-extrabold uppercase tracking-wider text-zinc-950">
+                  Battery &amp; Warranty
+                </h2>
               </div>
-              {metrics.perPhone.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className={`p-4 flex flex-wrap items-center gap-1.5 ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                  }`}
-                >
-                  {m.storages.length > 0 ? (
-                    m.storages.map((st) => (
-                      <span
-                        key={st}
-                        className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-zinc-800"
-                      >
-                        {st}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-zinc-400">—</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
 
-          {/* Available Colors */}
-          {shouldShowRow(metrics.perPhone.map((m) => m.colors.map((c) => c.name).join(','))) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                Color Finishes
-              </div>
-              {metrics.perPhone.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className={`p-4 flex flex-wrap items-center gap-2 ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                  }`}
-                >
-                  {m.colors.length > 0 ? (
-                    m.colors.map((c) => (
-                      <span
-                        key={c.name}
-                        className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700"
-                      >
-                        <span
-                          className="h-3 w-3 rounded-full border border-black/20 shrink-0"
-                          style={{ backgroundColor: c.hex }}
-                        />
-                        {c.name}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-zinc-400">—</span>
-                  )}
+              {shouldShowRow(metrics.perPhone.map((m) => m.batteryRaw)) && (
+                <div className={`grid ${specGridCols} border-b border-zinc-100 py-5 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Battery Capacity</div>
+                  {metrics.perPhone.map((m) => {
+                    const isWinner = isStrictMax(m.batteryMah, metrics.batteryValues);
+                    const pct =
+                      metrics.maxBattery > 0
+                        ? Math.min(100, Math.round((m.batteryMah / metrics.maxBattery) * 100))
+                        : 0;
+                    return (
+                      <div key={m.id} className="px-4 sm:px-6 space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-bold text-zinc-950">
+                            {m.batteryRaw || '—'}
+                          </span>
+                          {isWinner && (
+                            <span className="text-[11px] font-semibold text-emerald-600">• Longer Battery</span>
+                          )}
+                        </div>
+                        {m.batteryMah > 0 && (
+                          <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${isWinner ? 'bg-zinc-950' : 'bg-zinc-300'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* SECTION 3: DISPLAY & CAMERA */}
-          <div className="bg-zinc-100 text-zinc-900 px-5 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider border-y border-zinc-200/80">
-            <Smartphone className="h-4 w-4 text-zinc-700" />
-            <span>Display &amp; Camera System</span>
-          </div>
-
-          {shouldShowRow(metrics.perPhone.map((m) => m.screenSize)) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                Screen Size &amp; Panel
-              </div>
-              {metrics.perPhone.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className={`p-4 text-xs font-semibold text-zinc-900 ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                  }`}
-                >
-                  {m.screenSize || '—'}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {metrics.perPhone.some((m) => m.resolution) &&
-            shouldShowRow(metrics.perPhone.map((m) => m.resolution)) && (
-              <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-                <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                  Resolution
-                </div>
-                {metrics.perPhone.map((m, idx) => (
-                  <div
-                    key={m.id}
-                    className={`p-4 text-xs font-medium text-zinc-700 ${
-                      idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                    }`}
-                  >
-                    {m.resolution || '—'}
+              {metrics.perPhone.some((m) => m.charging) &&
+                shouldShowRow(metrics.perPhone.map((m) => m.charging)) && (
+                  <div className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                    <div className="pr-4 text-xs font-semibold text-zinc-500">Charging</div>
+                    {metrics.perPhone.map((m) => (
+                      <div key={m.id} className="px-4 sm:px-6 text-sm text-zinc-700">
+                        {m.charging || '—'}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-          {shouldShowRow(metrics.perPhone.map((m) => m.mainCamera)) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center gap-1.5">
-                <Camera className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-                Main Camera
-              </div>
-              {metrics.perPhone.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className={`p-4 text-xs font-medium text-zinc-800 leading-relaxed ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                  }`}
-                >
-                  {m.mainCamera || '—'}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {metrics.perPhone.some((m) => m.frontCamera) &&
-            shouldShowRow(metrics.perPhone.map((m) => m.frontCamera)) && (
-              <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-                <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                  Front Camera
-                </div>
-                {metrics.perPhone.map((m, idx) => (
-                  <div
-                    key={m.id}
-                    className={`p-4 text-xs font-medium text-zinc-700 ${
-                      idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                    }`}
-                  >
-                    {m.frontCamera || '—'}
-                  </div>
-                ))}
-              </div>
-            )}
-
-          {/* SECTION 4: BATTERY & WARRANTY */}
-          <div className="bg-zinc-100 text-zinc-900 px-5 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider border-y border-zinc-200/80">
-            <BatteryCharging className="h-4 w-4 text-emerald-600" />
-            <span>Battery, Charging &amp; Warranty</span>
-          </div>
-
-          {shouldShowRow(metrics.perPhone.map((m) => m.batteryRaw)) && (
-            <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                Battery Capacity
-              </div>
-              {metrics.perPhone.map((m, idx) => {
-                const isWinner =
-                  phones.length > 1 && m.batteryMah > 0 && m.batteryMah === metrics.maxBattery;
-                const pct =
-                  metrics.maxBattery > 0
-                    ? Math.min(100, Math.round((m.batteryMah / metrics.maxBattery) * 100))
-                    : 0;
+              {extraSpecNames.map((specName) => {
+                const values = phones.map((p) => {
+                  const found = getSpecsList(p).find((s) => s.name === specName);
+                  return found?.value || null;
+                });
+                if (!shouldShowRow(values)) return null;
                 return (
-                  <div
-                    key={m.id}
-                    className={`p-4 space-y-2 ${idx < phones.length - 1 ? 'border-r border-zinc-100' : ''} ${
-                      isWinner ? 'bg-emerald-50/35' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-zinc-950">
-                        {m.batteryRaw || '—'}
-                      </span>
-                      {isWinner && (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                          Best Battery
-                        </span>
-                      )}
-                    </div>
-                    {m.batteryMah > 0 && (
-                      <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${isWinner ? 'bg-emerald-500' : 'bg-zinc-700'}`}
-                          style={{ width: `${pct}%` }}
-                        />
+                  <div key={specName} className={`grid ${specGridCols} border-b border-zinc-100 py-4 items-center`}>
+                    <div className="pr-4 text-xs font-semibold text-zinc-500">{specName}</div>
+                    {values.map((val, idx) => (
+                      <div key={phones[idx].id} className="px-4 sm:px-6 text-sm text-zinc-700">
+                        {val || '—'}
                       </div>
-                    )}
+                    ))}
                   </div>
                 );
               })}
+
+              {shouldShowRow(metrics.perPhone.map((m) => m.warranty)) && (
+                <div className={`grid ${specGridCols} py-4 items-center`}>
+                  <div className="pr-4 text-xs font-semibold text-zinc-500">Warranty</div>
+                  {metrics.perPhone.map((m) => (
+                    <div key={m.id} className="px-4 sm:px-6 text-sm text-zinc-700">
+                      {m.warranty}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-
-          {metrics.perPhone.some((m) => m.charging) &&
-            shouldShowRow(metrics.perPhone.map((m) => m.charging)) && (
-              <div className={`grid ${gridColsClass} border-b border-zinc-100`}>
-                <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                  Charging Speed
-                </div>
-                {metrics.perPhone.map((m, idx) => (
-                  <div
-                    key={m.id}
-                    className={`p-4 text-xs font-medium text-zinc-700 ${
-                      idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                    }`}
-                  >
-                    {m.charging || '—'}
-                  </div>
-                ))}
-              </div>
-            )}
-
-          {/* Any additional dynamic specs */}
-          {extraSpecNames.map((specName) => {
-            const values = phones.map((p) => {
-              const found = getSpecsList(p).find((s) => s.name === specName);
-              return found?.value || null;
-            });
-            if (!shouldShowRow(values)) return null;
-            return (
-              <div key={specName} className={`grid ${gridColsClass} border-b border-zinc-100`}>
-                <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center">
-                  {specName}
-                </div>
-                {values.map((val, idx) => (
-                  <div
-                    key={phones[idx].id}
-                    className={`p-4 text-xs font-medium text-zinc-700 ${
-                      idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                    }`}
-                  >
-                    {val || '—'}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-
-          {/* Warranty */}
-          {shouldShowRow(metrics.perPhone.map((m) => m.warranty)) && (
-            <div className={`grid ${gridColsClass}`}>
-              <div className="p-4 text-xs font-bold text-zinc-600 bg-zinc-50/70 border-r border-zinc-200/70 flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                Warranty
-              </div>
-              {metrics.perPhone.map((m, idx) => (
-                <div
-                  key={m.id}
-                  className={`p-4 text-xs font-medium text-zinc-700 ${
-                    idx < phones.length - 1 ? 'border-r border-zinc-100' : ''
-                  }`}
-                >
-                  {m.warranty}
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
