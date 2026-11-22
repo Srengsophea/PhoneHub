@@ -3,6 +3,7 @@ import { useCart } from '@/stores/cart';
 import { formatPrice, productImage, cartItemPricing } from '@/lib/format';
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export function CartDrawer() {
   const navigate = useNavigate();
@@ -102,6 +103,16 @@ export function CartDrawer() {
           {cart.items.map((item) => {
             const itemBusy = pendingItemIds.includes(item.id);
             const priceInfo = cartItemPricing(item);
+            const maxStock =
+              item.variant?.stock != null
+                ? Number(item.variant.stock)
+                : item.product?.variants?.length
+                ? Number(
+                    (item.product.variants.find((v) => v.stock > 0) ?? item.product.variants[0])
+                      .stock
+                  )
+                : null;
+            const atMaxStock = maxStock !== null && item.quantity >= maxStock;
             return (
               <div key={item.id} className="p-4 flex gap-4 items-center">
                 <img
@@ -131,20 +142,28 @@ export function CartDrawer() {
                       </span>
                     )}
                   </div>
-                  {item.quantity > 1 && (
-                    <p className="text-[11px] text-zinc-400 mt-0.5">
-                      {formatPrice(priceInfo.current)} each
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {item.quantity > 1 && (
+                      <p className="text-[11px] text-zinc-400">
+                        {formatPrice(priceInfo.current)} each
+                      </p>
+                    )}
+                    {atMaxStock && (
+                      <p className="text-[11px] font-semibold text-amber-600">
+                        Max stock ({maxStock})
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Quantity Controls */}
                 <div className="flex items-center border border-zinc-200 rounded-lg select-none">
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (item.quantity > 1 && !itemBusy) {
-                        update(item.id, item.quantity - 1);
+                        const res = await update(item.id, item.quantity - 1);
+                        if (!res.ok && res.message) toast.error(res.message);
                       }
                     }}
                     disabled={itemBusy || item.quantity <= 1}
@@ -165,16 +184,19 @@ export function CartDrawer() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!itemBusy) {
-                        update(item.id, item.quantity + 1);
+                    onClick={async () => {
+                      if (!itemBusy && !atMaxStock) {
+                        const res = await update(item.id, item.quantity + 1);
+                        if (!res.ok && res.message) toast.error(res.message);
                       }
                     }}
-                    disabled={itemBusy}
+                    disabled={itemBusy || atMaxStock}
                     aria-label="Increase quantity"
-                    title="Increase quantity"
+                    title={atMaxStock ? `Maximum stock reached (${maxStock} available)` : 'Increase quantity'}
                     className={`p-1.5 rounded-r-lg text-zinc-600 transition ${
-                      itemBusy
+                      atMaxStock
+                        ? 'opacity-35 cursor-not-allowed'
+                        : itemBusy
                         ? 'opacity-60 cursor-wait'
                         : 'cursor-pointer hover:bg-zinc-100 hover:text-zinc-950 active:scale-95'
                     }`}

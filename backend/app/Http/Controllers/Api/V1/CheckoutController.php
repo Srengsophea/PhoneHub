@@ -40,7 +40,7 @@ class CheckoutController extends Controller
             'items' => 'nullable|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.variant_id' => 'nullable|exists:product_variants,id',
-            'items.*.quantity' => 'nullable|integer|min:1|max:10',
+            'items.*.quantity' => 'nullable|integer|min:1|max:999',
             'guest_session_id' => 'nullable|string',
             'guest_email' => 'nullable|email|max:255',
             'guest_name' => 'nullable|string|max:255',

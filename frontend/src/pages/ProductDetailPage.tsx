@@ -344,7 +344,9 @@ export function ProductDetailPage() {
   const totalPrice = Number(currentPrice || 0) * quantity;
   const totalOriginalPrice = originalPrice ? Number(originalPrice) * quantity : null;
 
-  const inStock = activeVariant ? activeVariant.stock > 0 : true;
+  const maxStock = activeVariant ? Math.max(0, Number(activeVariant.stock ?? 0)) : null;
+  const inStock = maxStock === null ? true : maxStock > 0;
+  const atMaxStock = maxStock !== null && quantity >= maxStock;
 
   const handleStorageSelect = (storage: string) => {
     setSelectedStorage(storage);
@@ -354,7 +356,12 @@ export function ProductDetailPage() {
         product.variants.find(
           (v) => v.storage === storage && v.color?.toLowerCase() === currentColor.toLowerCase()
         ) || product.variants.find((v) => v.storage === storage);
-      if (match) setSelectedVariant(match);
+      if (match) {
+        setSelectedVariant(match);
+        if (match.stock > 0 && quantity > match.stock) {
+          setQuantity(match.stock);
+        }
+      }
     }
   };
 
@@ -366,7 +373,12 @@ export function ProductDetailPage() {
         product.variants.find(
           (v) => v.color?.toLowerCase() === colorName.toLowerCase() && v.storage === currentStorage
         ) || product.variants.find((v) => v.color?.toLowerCase() === colorName.toLowerCase());
-      if (match) setSelectedVariant(match);
+      if (match) {
+        setSelectedVariant(match);
+        if (match.stock > 0 && quantity > match.stock) {
+          setQuantity(match.stock);
+        }
+      }
     }
 
     // Automatically switch main image to the selected color's imported image
@@ -519,7 +531,11 @@ export function ProductDetailPage() {
                 }`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${inStock ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                {inStock ? 'In Stock' : 'Out of Stock'}
+                {inStock
+                  ? maxStock !== null
+                    ? `In Stock (${maxStock} available)`
+                    : 'In Stock'
+                  : 'Out of Stock'}
               </span>
             </div>
           </div>
@@ -669,8 +685,10 @@ export function ProductDetailPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base select-none"
+                      onClick={() => setQuantity(maxStock !== null ? Math.min(maxStock, quantity + 1) : quantity + 1)}
+                      disabled={!inStock || atMaxStock}
+                      title={atMaxStock ? `Maximum stock reached (${maxStock} available)` : 'Increase quantity'}
+                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-base select-none"
                       aria-label="Increase quantity"
                     >
                       +
@@ -755,9 +773,11 @@ export function ProductDetailPage() {
                 <span className="px-3 font-bold text-sm text-zinc-950 min-w-[32px] text-center">{quantity}</span>
                 <button
                   type="button"
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={() => setQuantity(maxStock !== null ? Math.min(maxStock, quantity + 1) : quantity + 1)}
+                  disabled={!inStock || atMaxStock}
+                  title={atMaxStock ? `Maximum stock reached (${maxStock} available)` : 'Increase quantity'}
                   aria-label="Increase quantity"
-                  className="h-7 w-7 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base"
+                  className="h-7 w-7 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-base"
                 >
                   +
                 </button>

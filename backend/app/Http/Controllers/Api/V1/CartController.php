@@ -35,7 +35,7 @@ class CartController extends Controller
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'variant_id' => 'nullable|exists:product_variants,id',
-            'quantity' => 'nullable|integer|min:1|max:10',
+            'quantity' => 'nullable|integer|min:1|max:999',
         ]);
 
         $cart = $this->getActiveCart($request);
@@ -64,7 +64,7 @@ class CartController extends Controller
     public function updateItem(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'quantity' => 'required|integer|min:0|max:10',
+            'quantity' => 'required|integer|min:0|max:999',
         ]);
 
         try {

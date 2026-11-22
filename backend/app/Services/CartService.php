@@ -27,14 +27,25 @@ class CartService
 
     public function addItem(Cart $cart, int $productId, ?int $variantId = null, int $quantity = 1): Cart
     {
-        $product = Product::findOrFail($productId);
-        
+        $product = Product::with('variants')->findOrFail($productId);
+
         $price = $product->sale_price ?? $product->base_price;
+        $variant = null;
 
         if ($variantId) {
             $variant = ProductVariant::where('product_id', $productId)->where('id', $variantId)->firstOrFail();
+        } elseif ($product->variants->isNotEmpty()) {
+            // Auto-assign the default in-stock variant so stock limits are always enforced
+            $variant = $product->variants->first(fn ($v) => $v->stock > 0) ?? $product->variants->first();
+            $variantId = $variant?->id;
+        }
+
+        if ($variant) {
             $price = $variant->sale_price ?? $variant->price;
 
+            if ($variant->stock <= 0) {
+                throw new Exception('This option is currently out of stock.');
+            }
             if ($variant->stock < $quantity) {
                 throw new Exception("Only {$variant->stock} items available in stock.");
             }
@@ -47,8 +58,8 @@ class CartService
 
         if ($item) {
             $newQuantity = $item->quantity + $quantity;
-            if ($variantId && $variant->stock < $newQuantity) {
-                throw new Exception("Cannot add more. Max stock available: {$variant->stock}.");
+            if ($variant && $variant->stock < $newQuantity) {
+                throw new Exception("Cannot add more. Only {$variant->stock} available in stock.");
             }
             $item->update([
                 'quantity' => $newQuantity,
@@ -69,16 +80,27 @@ class CartService
 
     public function updateQuantity(int $cartItemId, int $quantity): Cart
     {
-        $item = CartItem::with(['variant'])->findOrFail($cartItemId);
+        $item = CartItem::with(['variant', 'product.variants'])->findOrFail($cartItemId);
         $cart = $item->cart;
 
         if ($quantity <= 0) {
             $item->delete();
         } else {
-            if ($item->variant && $item->variant->stock < $quantity) {
-                throw new Exception("Only {$item->variant->stock} items available.");
+            $variant = $item->variant;
+            if (!$variant && $item->product && $item->product->variants->isNotEmpty()) {
+                $variant = $item->product->variants->first(fn ($v) => $v->stock > 0) ?? $item->product->variants->first();
+                if ($variant) {
+                    $item->variant_id = $variant->id;
+                }
             }
-            $item->update(['quantity' => $quantity]);
+
+            if ($variant && $variant->stock < $quantity) {
+                throw new Exception("Only {$variant->stock} items available in stock.");
+            }
+            $item->update([
+                'variant_id' => $item->variant_id,
+                'quantity' => $quantity,
+            ]);
         }
 
         return $this->formatCartResponse($cart->fresh());
@@ -157,7 +179,7 @@ class CartService
 
     public function formatCartResponse(Cart $cart): Cart
     {
-        $cart->load(['items.product.images', 'items.variant', 'coupon']);
+        $cart->load(['items.product.images', 'items.product.variants', 'items.variant', 'coupon']);
         // Attach dynamic attributes
         $cart->subtotal = $cart->subtotal;
         $cart->discount_amount = $cart->discount_amount;

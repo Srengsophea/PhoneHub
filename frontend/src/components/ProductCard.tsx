@@ -16,15 +16,26 @@ export function ProductCard({ product }: { product: Product }) {
   const { add: addToCart } = useCart();
   const [adding, setAdding] = useState(false);
 
-  const pricing = productPricing(product);
+  const defaultVariant =
+    product.variants?.find((v) => v.stock > 0) ?? product.variants?.[0] ?? null;
+  const hasStock = !product.variants?.length || product.variants.some((v) => v.stock > 0);
+  const uniqueStorages = Array.from(
+    new Set((product.variants || []).map((v) => v.storage).filter(Boolean))
+  );
+
+  const pricing = productPricing(product, defaultVariant);
   const isWishlisted = inWishlist(product.id);
   const isCompared = inCompare(product.id);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!hasStock) {
+      toast.error('This product is currently out of stock.');
+      return;
+    }
     setAdding(true);
-    const res = await addToCart(product.id);
+    const res = await addToCart(product.id, defaultVariant?.id);
     setAdding(false);
     if (res.ok) {
       toast.success(`Added ${product.name} to cart`);
@@ -132,7 +143,9 @@ export function ProductCard({ product }: { product: Product }) {
 
         {product.variants && product.variants.length > 0 && (
           <p className="text-xs text-zinc-400 mt-0.5">
-            {product.variants.length} storage options available
+            {uniqueStorages.length > 1
+              ? `${uniqueStorages.length} storage options available`
+              : `${product.variants.length} ${product.variants.length === 1 ? 'option' : 'options'} available`}
           </p>
         )}
 
@@ -153,9 +166,9 @@ export function ProductCard({ product }: { product: Product }) {
 
           <button
             onClick={handleAddToCart}
-            disabled={adding}
-            className="flex h-10 px-3.5 items-center gap-2 rounded-xl bg-zinc-950 text-white hover:bg-brand-600 transition active:scale-95 disabled:opacity-50 text-xs font-semibold shadow-xs"
-            title="Add to Cart"
+            disabled={adding || !hasStock}
+            className="flex h-10 px-3.5 items-center gap-2 rounded-xl bg-zinc-950 text-white hover:bg-brand-600 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold shadow-xs"
+            title={hasStock ? 'Add to Cart' : 'Out of Stock'}
           >
             <ShoppingBag className="h-4 w-4" />
             <span>Add</span>
