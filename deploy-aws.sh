@@ -3,7 +3,7 @@ set -e
 
 # ==============================================================================
 # PhoneHub Backend Automated Setup for AWS EC2 (Ubuntu 22.04 / 24.04 LTS)
-# Target Server: 54.151.151.35
+# Target Server: 18.139.0.116
 # ==============================================================================
 
 echo "========================================================"
@@ -55,7 +55,7 @@ if [ ! -f .env ]; then
 fi
 
 # Configure .env with AWS Server IP & SQLite Database
-sudo sed -i "s|APP_URL=.*|APP_URL=http://54.151.151.35|g" .env
+sudo sed -i "s|APP_URL=.*|APP_URL=http://18.139.0.116|g" .env
 sudo sed -i "s|DB_CONNECTION=.*|DB_CONNECTION=sqlite|g" .env
 sudo sed -i "s|# DB_DATABASE=.*|DB_DATABASE=$REPO_DIR/backend/database/database.sqlite|g" .env
 sudo sed -i "s|FRONTEND_URL=.*|FRONTEND_URL=*|g" .env
@@ -92,7 +92,7 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    server_name 54.151.151.35 _;
+    server_name 18.139.0.116 _;
     root /var/www/phonehub/backend/public;
 
     add_header X-Frame-Options "SAMEORIGIN";
@@ -141,7 +141,7 @@ sudo systemctl enable nginx php8.3-fpm
 
 echo "========================================================"
 echo "✅ PhoneHub Backend is now LIVE on AWS EC2!"
-echo "📍 API Base URL: http://54.151.151.35/api/v1"
-echo "🔍 Health Check: http://54.151.151.35/api/v1/products"
+echo "📍 API Base URL: http://18.139.0.116/api/v1"
+echo "🔍 Health Check: http://18.139.0.116/api/v1/products"
 echo "========================================================"
 
