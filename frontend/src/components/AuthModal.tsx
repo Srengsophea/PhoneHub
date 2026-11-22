@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Modal, Button } from './ui';
 import { useAuth } from '@/stores/auth';
+import { useCart } from '@/stores/cart';
 import { getErrorMessage } from '@/lib/api';
+import toast from 'react-hot-toast';
 import {
   Mail,
   Lock,
@@ -15,12 +17,72 @@ import {
   ArrowRight,
   CheckCircle2,
   KeyRound,
+  Loader2,
 } from 'lucide-react';
 
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  '768009154981-5jsg5cqo3l1dgfloqg1pbnb5m4ujs54p.apps.googleusercontent.com';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        oauth2?: {
+          initTokenClient: (config: {
+            client_id: string;
+            scope: string;
+            callback: (response: { access_token?: string; error?: string; error_description?: string }) => void;
+            error_callback?: (error: { type?: string; message?: string }) => void;
+          }) => {
+            requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
+          };
+        };
+      };
+    };
+  }
+}
+
+function loadGoogleIdentityScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.oauth2) {
+      resolve();
+      return;
+    }
+
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
+    if (existing) {
+      let attempts = 0;
+      const timer = window.setInterval(() => {
+        attempts += 1;
+        if (window.google?.accounts?.oauth2) {
+          window.clearInterval(timer);
+          resolve();
+        } else if (attempts > 50) {
+          window.clearInterval(timer);
+          reject(new Error('Google sign-in failed to initialize. Please refresh and try again.'));
+        }
+      }, 100);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Unable to load Google Sign-In. Please check your connection.'));
+    document.head.appendChild(script);
+  });
+}
+
 export function AuthModal() {
-  const { authModal, closeAuthModal, login, register } = useAuth();
+  const { authModal, closeAuthModal, login, loginWithGoogle, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>(authModal.mode || 'login');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -82,6 +144,54 @@ export function AuthModal() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      await loadGoogleIdentityScript();
+      const oauth2 = window.google?.accounts?.oauth2;
+      if (!oauth2) {
+        throw new Error('Google Sign-In is unavailable right now. Please try again.');
+      }
+
+      const tokenClient = oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'openid email profile',
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error || !tokenResponse.access_token) {
+            setGoogleLoading(false);
+            if (tokenResponse.error !== 'access_denied') {
+              setError(tokenResponse.error_description || 'Google sign-in was not completed.');
+            }
+            return;
+          }
+
+          try {
+            const loggedUser = await loginWithGoogle({ access_token: tokenResponse.access_token });
+            useCart.getState().fetch();
+            toast.success(`Welcome, ${loggedUser.name}!`);
+            closeAuthModal();
+          } catch (err) {
+            setError(getErrorMessage(err, 'Could not sign in with Google. Please try again.'));
+          } finally {
+            setGoogleLoading(false);
+          }
+        },
+        error_callback: (err) => {
+          setGoogleLoading(false);
+          if (err?.type !== 'popup_closed') {
+            setError('Google sign-in popup was blocked or closed. Please allow popups and try again.');
+          }
+        },
+      });
+
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+    } catch (err) {
+      setGoogleLoading(false);
+      setError(getErrorMessage(err, 'Could not connect with Google. Please try again.'));
     }
   };
 
@@ -158,6 +268,54 @@ export function AuthModal() {
             <span className="leading-relaxed">{error}</span>
           </div>
         )}
+
+        {/* Continue with Google Button */}
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={handleGoogleAuth}
+            disabled={googleLoading || loading}
+            className="w-full h-11 flex items-center justify-center gap-3 rounded-md border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 shadow-2xs hover:bg-zinc-50 hover:border-zinc-400 active:scale-[0.99] disabled:opacity-60 disabled:cursor-wait transition cursor-pointer"
+          >
+            {googleLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.97-1.07 7.96-2.91l-3.88-3.03c-1.08.72-2.46 1.16-4.08 1.16-3.13 0-5.78-2.11-6.73-4.96H1.24v3.13C3.26 21.36 7.33 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.27 14.26c-.25-.72-.38-1.49-.38-2.26s.13-1.54.38-2.26V6.61H1.24C.45 8.18 0 9.94 0 12s.45 3.82 1.24 5.39l4.03-3.13z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.96 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.24 6.61l4.03 3.13c.95-2.85 3.6-4.96 6.73-4.96z"
+                />
+              </svg>
+            )}
+            <span>
+              {googleLoading
+                ? 'Connecting to Google...'
+                : mode === 'login'
+                ? 'Continue with Google'
+                : 'Sign up with Google'}
+            </span>
+          </button>
+
+          <div className="relative flex items-center justify-center">
+            <div className="w-full border-t border-zinc-200" />
+            <span className="bg-white px-3 text-[11px] font-medium uppercase tracking-wider text-zinc-400 shrink-0">
+              or continue with email
+            </span>
+            <div className="w-full border-t border-zinc-200" />
+          </div>
+        </div>
 
         {/* Auth Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

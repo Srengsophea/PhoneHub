@@ -10,6 +10,7 @@ interface AuthState {
   authModal: { open: boolean; mode: 'login' | 'register'; reason?: string };
   init: () => Promise<void>;
   login: (email: string, password: string) => Promise<User>;
+  loginWithGoogle: (payload: { access_token?: string; credential?: string }) => Promise<User>;
   register: (payload: {
     name: string;
     email: string;
@@ -57,6 +58,27 @@ export const useAuth = create<AuthState>((set, get) => ({
     const user = data.data.user;
 
     // Explicitly prevent administrator accounts from logging into customer store
+    if (isStaff(user.role)) {
+      if (data.data.token) {
+        api.post('/auth/logout', {}, {
+          headers: { Authorization: `Bearer ${data.data.token}` },
+        }).catch(() => {});
+      }
+      throw new Error('Incorrect email or password. Please try again.');
+    }
+
+    localStorage.setItem(TOKEN_KEY, data.data.token);
+    set({ user: data.data.user, token: data.data.token });
+    return data.data.user;
+  },
+
+  loginWithGoogle: async (payload) => {
+    const { data } = await api.post('/auth/google', {
+      ...payload,
+      guest_session_id: getGuestSessionId(),
+    });
+    const user = data.data.user;
+
     if (isStaff(user.role)) {
       if (data.data.token) {
         api.post('/auth/logout', {}, {
