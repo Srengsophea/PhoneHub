@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 export function CartDrawer() {
   const navigate = useNavigate();
-  const { cart, open, setOpen, update, remove, loading } = useCart();
+  const { cart, open, setOpen, update, remove, pendingItemIds } = useCart();
 
   const handleCheckout = () => {
     setOpen(false);
@@ -77,82 +77,87 @@ export function CartDrawer() {
         </div>
       ) : (
         <div className="divide-y divide-zinc-100">
-          {cart.items.map((item) => (
-            <div key={item.id} className="p-4 flex gap-4 items-center">
-              <img
-                src={productImage(item.product)}
-                alt={item.product.name}
-                className="h-16 w-16 rounded-xl object-contain bg-zinc-50 p-2 border border-zinc-100"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-zinc-900 truncate">{item.product.name}</p>
-                {item.variant && (
-                  <p className="text-xs text-zinc-500">
-                    {item.variant.ram} / {item.variant.storage} • {item.variant.color}
-                  </p>
-                )}
-                <p className="text-sm font-bold text-zinc-900 mt-1">{formatPrice(item.unit_price)}</p>
-              </div>
+          {cart.items.map((item) => {
+            const itemBusy = pendingItemIds.includes(item.id);
+            return (
+              <div key={item.id} className="p-4 flex gap-4 items-center">
+                <img
+                  src={productImage(item.product)}
+                  alt={item.product.name}
+                  className="h-16 w-16 rounded-xl object-contain bg-zinc-50 p-2 border border-zinc-100"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900 truncate">{item.product.name}</p>
+                  {item.variant && (
+                    <p className="text-xs text-zinc-500">
+                      {item.variant.ram} / {item.variant.storage} • {item.variant.color}
+                    </p>
+                  )}
+                  <p className="text-sm font-bold text-zinc-900 mt-1">{formatPrice(item.unit_price)}</p>
+                </div>
 
-              {/* Quantity Controls */}
-              <div className="flex items-center border border-zinc-200 rounded-lg select-none">
+                {/* Quantity Controls */}
+                <div className="flex items-center border border-zinc-200 rounded-lg select-none">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (item.quantity > 1 && !itemBusy) {
+                        update(item.id, item.quantity - 1);
+                      }
+                    }}
+                    disabled={itemBusy || item.quantity <= 1}
+                    aria-label="Decrease quantity"
+                    title={item.quantity <= 1 ? 'Minimum quantity is 1' : 'Decrease quantity'}
+                    className={`p-1.5 rounded-l-lg text-zinc-600 transition ${
+                      item.quantity <= 1
+                        ? 'opacity-35 cursor-not-allowed'
+                        : itemBusy
+                        ? 'opacity-60 cursor-wait'
+                        : 'cursor-pointer hover:bg-zinc-100 hover:text-zinc-950 active:scale-95'
+                    }`}
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="px-2.5 text-xs font-semibold text-zinc-900 select-none min-w-[24px] text-center">
+                    {item.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!itemBusy) {
+                        update(item.id, item.quantity + 1);
+                      }
+                    }}
+                    disabled={itemBusy}
+                    aria-label="Increase quantity"
+                    title="Increase quantity"
+                    className={`p-1.5 rounded-r-lg text-zinc-600 transition ${
+                      itemBusy
+                        ? 'opacity-60 cursor-wait'
+                        : 'cursor-pointer hover:bg-zinc-100 hover:text-zinc-950 active:scale-95'
+                    }`}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
-                    if (item.quantity > 1 && !loading) {
-                      update(item.id, item.quantity - 1);
-                    }
+                    if (!itemBusy) remove(item.id);
                   }}
-                  disabled={loading || item.quantity <= 1}
-                  aria-label="Decrease quantity"
-                  title={item.quantity <= 1 ? 'Minimum quantity is 1' : 'Decrease quantity'}
-                  className={`p-1.5 rounded-l-lg text-zinc-600 transition ${
-                    item.quantity <= 1
-                      ? 'opacity-35 cursor-not-allowed'
-                      : loading
-                      ? 'opacity-60 cursor-wait'
-                      : 'cursor-pointer hover:bg-zinc-100 hover:text-zinc-950 active:scale-95'
+                  disabled={itemBusy}
+                  aria-label="Remove item"
+                  title="Remove item"
+                  className={`p-1.5 text-zinc-400 transition ${
+                    itemBusy ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:text-red-500'
                   }`}
                 >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span className="px-2.5 text-xs font-semibold text-zinc-900 select-none min-w-[24px] text-center">
-                  {item.quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!loading) {
-                      update(item.id, item.quantity + 1);
-                    }
-                  }}
-                  disabled={loading}
-                  aria-label="Increase quantity"
-                  title="Increase quantity"
-                  className={`p-1.5 rounded-r-lg text-zinc-600 transition ${
-                    loading
-                      ? 'opacity-60 cursor-wait'
-                      : 'cursor-pointer hover:bg-zinc-100 hover:text-zinc-950 active:scale-95'
-                  }`}
-                >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => remove(item.id)}
-                disabled={loading}
-                aria-label="Remove item"
-                title="Remove item"
-                className={`p-1.5 text-zinc-400 transition ${
-                  loading ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:text-red-500'
-                }`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Drawer>

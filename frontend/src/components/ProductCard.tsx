@@ -13,7 +13,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { user, openAuthModal } = useAuth();
   const { toggle: toggleWishlist, has: inWishlist } = useWishlist();
   const { toggle: toggleCompare, has: inCompare } = useCompare();
-  const { add: addToCart, loading: cartLoading } = useCart();
+  const { add: addToCart } = useCart();
   const [adding, setAdding] = useState(false);
 
   const pricing = productPricing(product);
@@ -153,7 +153,7 @@ export function ProductCard({ product }: { product: Product }) {
 
           <button
             onClick={handleAddToCart}
-            disabled={adding || cartLoading}
+            disabled={adding}
             className="flex h-10 px-3.5 items-center gap-2 rounded-xl bg-zinc-950 text-white hover:bg-brand-600 transition active:scale-95 disabled:opacity-50 text-xs font-semibold shadow-xs"
             title="Add to Cart"
           >

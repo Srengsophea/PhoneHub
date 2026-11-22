@@ -72,9 +72,10 @@ export function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [addingToCart, setAddingToCart] = useState(false);
   const [buyingNow, setBuyingNow] = useState(false);
 
-  const { add: addToCart, setOpen: setCartOpen, loading: cartLoading } = useCart();
+  const { add: addToCart, setOpen: setCartOpen } = useCart();
   const { toggle: toggleWishlist, has: inWishlist } = useWishlist();
   const { toggle: toggleCompare, has: inCompare } = useCompare();
 
@@ -402,11 +403,16 @@ export function ProductDetailPage() {
   };
 
   const handleAddToCart = async () => {
-    const res = await addToCart(product.id, activeVariant?.id, quantity);
-    if (res.ok) {
-      toast.success(`Added ${product.name} to cart`);
-    } else {
-      toast.error(res.message || 'Could not add to cart');
+    setAddingToCart(true);
+    try {
+      const res = await addToCart(product.id, activeVariant?.id, quantity);
+      if (res.ok) {
+        toast.success(`Added ${product.name} to cart`);
+      } else {
+        toast.error(res.message || 'Could not add to cart');
+      }
+    } finally {
+      setAddingToCart(false);
     }
   };
 
@@ -707,7 +713,7 @@ export function ProductDetailPage() {
                   type="button"
                   variant="outline"
                   onClick={handleAddToCart}
-                  disabled={!inStock || cartLoading || buyingNow}
+                  disabled={!inStock || addingToCart || buyingNow}
                   size="lg"
                   className="w-full h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900 rounded-md shadow-2xs text-sm"
                 >
@@ -718,7 +724,7 @@ export function ProductDetailPage() {
                 <Button
                   type="button"
                   onClick={handleBuyNow}
-                  disabled={!inStock || cartLoading || buyingNow}
+                  disabled={!inStock || addingToCart || buyingNow}
                   size="lg"
                   className="w-full h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-sm transition-transform active:scale-98 rounded-md text-sm"
                 >
@@ -762,7 +768,7 @@ export function ProductDetailPage() {
                 type="button"
                 variant="outline"
                 onClick={handleAddToCart}
-                disabled={!inStock || cartLoading || buyingNow}
+                disabled={!inStock || addingToCart || buyingNow}
                 size="lg"
                 className="flex-1 h-12 gap-2 font-bold border-zinc-300 hover:bg-zinc-100 text-zinc-900 rounded-md"
               >
@@ -774,7 +780,7 @@ export function ProductDetailPage() {
               <Button
                 type="button"
                 onClick={handleBuyNow}
-                disabled={!inStock || cartLoading || buyingNow}
+                disabled={!inStock || addingToCart || buyingNow}
                 size="lg"
                 className="flex-1 h-12 gap-2 font-extrabold bg-zinc-950 hover:bg-zinc-800 text-white shadow-sm transition-transform active:scale-98 rounded-md"
               >

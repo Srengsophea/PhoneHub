@@ -36,6 +36,8 @@ export interface CartResult {
 interface CartState {
   cart: Cart;
   loading: boolean;
+  pendingItemIds: number[];
+  pendingProductIds: number[];
   open: boolean;
   setOpen: (open: boolean) => void;
   count: () => number;
@@ -70,9 +72,63 @@ export const useCart = create<CartState>((set, get) => {
     }
   };
 
+  const runForItem = async (
+    itemId: number,
+    fn: () => Promise<{ data: { data: Cart } }>
+  ): Promise<CartResult> => {
+    set((s) => ({
+      pendingItemIds: s.pendingItemIds.includes(itemId) ? s.pendingItemIds : [...s.pendingItemIds, itemId],
+    }));
+    try {
+      const res = await fn();
+      const updated = { ...emptyCart, ...res.data.data };
+      save(updated);
+      set((s) => ({
+        cart: updated,
+        pendingItemIds: s.pendingItemIds.filter((id) => id !== itemId),
+      }));
+      return { ok: true };
+    } catch (err) {
+      set((s) => ({
+        pendingItemIds: s.pendingItemIds.filter((id) => id !== itemId),
+      }));
+      return { ok: false, message: getErrorMessage(err) };
+    }
+  };
+
+  const runForProduct = async (
+    productId: number,
+    fn: () => Promise<{ data: { data: Cart } }>,
+    openAfter = false
+  ): Promise<CartResult> => {
+    set((s) => ({
+      pendingProductIds: s.pendingProductIds.includes(productId)
+        ? s.pendingProductIds
+        : [...s.pendingProductIds, productId],
+    }));
+    try {
+      const res = await fn();
+      const updated = { ...emptyCart, ...res.data.data };
+      save(updated);
+      set((s) => ({
+        cart: updated,
+        pendingProductIds: s.pendingProductIds.filter((id) => id !== productId),
+        ...(openAfter ? { open: true } : {}),
+      }));
+      return { ok: true };
+    } catch (err) {
+      set((s) => ({
+        pendingProductIds: s.pendingProductIds.filter((id) => id !== productId),
+      }));
+      return { ok: false, message: getErrorMessage(err) };
+    }
+  };
+
   return {
     cart: getInitialCart(),
     loading: false,
+    pendingItemIds: [],
+    pendingProductIds: [],
     open: false,
     setOpen: (open) => set({ open }),
     count: () => get().cart.items.reduce((n: number, i: CartItem) => n + i.quantity, 0),
@@ -92,13 +148,17 @@ export const useCart = create<CartState>((set, get) => {
       }
     },
     add: (productId, variantId = null, quantity = 1, openDrawer = false) => {
-      return run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), openDrawer);
+      return runForProduct(
+        productId,
+        () => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }),
+        openDrawer
+      );
     },
     update: async (itemId, quantity) => {
       if (quantity < 1) return { ok: true };
-      return run(() => api.put(`/cart/items/${itemId}`, { quantity }));
+      return runForItem(itemId, () => api.put(`/cart/items/${itemId}`, { quantity }));
     },
-    remove: (itemId) => run(() => api.delete(`/cart/items/${itemId}`)),
+    remove: (itemId) => runForItem(itemId, () => api.delete(`/cart/items/${itemId}`)),
     clear: async () => {
       try {
         await api.delete('/cart');
