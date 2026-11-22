@@ -10,16 +10,18 @@ echo "========================================================"
 echo "🚀 Starting PhoneHub Backend Setup on AWS EC2..."
 echo "========================================================"
 
-# 1. Update OS Packages
-sudo apt update -y
-sudo apt install -y software-properties-common curl git unzip nginx sqlite3
+# 1. Update OS Packages (allow releaseinfo changes in case an existing PPA label changed)
+sudo apt-get update -y --allow-releaseinfo-change
+sudo apt-get install -y software-properties-common curl git unzip nginx sqlite3
 
-# 2. Add PHP PPA repository
-sudo add-apt-repository -y ppa:ondrej/php
-sudo apt update -y
+# 2. Add PHP PPA only if php8.3 is not natively available (Ubuntu 24.04 Noble includes PHP 8.3 natively)
+if ! apt-cache show php8.3 &> /dev/null; then
+    sudo add-apt-repository -y ppa:ondrej/php
+    sudo apt-get update -y --allow-releaseinfo-change
+fi
 
 # 3. Install PHP 8.3 and required extensions
-sudo apt install -y php8.3 php8.3-fpm php8.3-cli php8.3-common php8.3-mysql \
+sudo apt-get install -y php8.3 php8.3-fpm php8.3-cli php8.3-common php8.3-mysql \
   php8.3-sqlite3 php8.3-zip php8.3-gd php8.3-mbstring php8.3-curl php8.3-xml php8.3-bcmath
 
 # Set PHP 8.3 as default CLI
