@@ -94,8 +94,10 @@ export const useCart = create<CartState>((set, get) => {
     add: (productId, variantId = null, quantity = 1, openDrawer = true) => {
       return run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), openDrawer);
     },
-    update: (itemId, quantity) =>
-      quantity <= 0 ? get().remove(itemId) : run(() => api.put(`/cart/items/${itemId}`, { quantity })),
+    update: async (itemId, quantity) => {
+      if (quantity < 1) return { ok: true };
+      return run(() => api.put(`/cart/items/${itemId}`, { quantity }));
+    },
     remove: (itemId) => run(() => api.delete(`/cart/items/${itemId}`)),
     clear: async () => {
       try {

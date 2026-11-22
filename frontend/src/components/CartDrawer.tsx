@@ -97,17 +97,27 @@ export function CartDrawer() {
               {/* Quantity Controls */}
               <div className="flex items-center border border-zinc-200 rounded-lg">
                 <button
-                  onClick={() => update(item.id, item.quantity - 1)}
-                  disabled={loading}
-                  className="p-1 hover:bg-zinc-100 rounded-l-lg text-zinc-500"
+                  type="button"
+                  onClick={() => {
+                    if (item.quantity > 1) {
+                      update(item.id, item.quantity - 1);
+                    }
+                  }}
+                  disabled={loading || item.quantity <= 1}
+                  aria-label="Decrease quantity"
+                  title={item.quantity <= 1 ? 'Minimum quantity is 1' : 'Decrease quantity'}
+                  className="p-1 hover:bg-zinc-100 rounded-l-lg text-zinc-500 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="px-2 text-xs font-semibold text-zinc-900">{item.quantity}</span>
+                <span className="px-2 text-xs font-semibold text-zinc-900 select-none">{item.quantity}</span>
                 <button
+                  type="button"
                   onClick={() => update(item.id, item.quantity + 1)}
                   disabled={loading}
-                  className="p-1 hover:bg-zinc-100 rounded-r-lg text-zinc-500"
+                  aria-label="Increase quantity"
+                  title="Increase quantity"
+                  className="p-1 hover:bg-zinc-100 rounded-r-lg text-zinc-500 disabled:opacity-35 disabled:cursor-not-allowed transition"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
