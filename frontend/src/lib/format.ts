@@ -88,6 +88,29 @@ export const productPricing = (p: Partial<Product>, variant?: ProductVariant | n
   return pricing(price, sale);
 };
 
+/** Computes unit & line pricing (original vs. discounted) for a cart item. */
+export const cartItemPricing = (item: {
+  unit_price: Money;
+  quantity: number;
+  product?: Partial<Product> | null;
+  variant?: ProductVariant | null;
+}) => {
+  const current = toNumber(item.unit_price);
+  const candidateOriginal =
+    item.variant?.price != null
+      ? toNumber(item.variant.price)
+      : item.product?.base_price != null
+      ? toNumber(item.product.base_price)
+      : 0;
+  const original = candidateOriginal > current ? candidateOriginal : null;
+  const discountPct = original ? Math.round(((original - current) / original) * 100) : 0;
+  const unitSavings = original ? original - current : 0;
+  const lineTotal = current * item.quantity;
+  const lineOriginal = original ? original * item.quantity : null;
+  const lineSavings = unitSavings * item.quantity;
+  return { current, original, discountPct, unitSavings, lineTotal, lineOriginal, lineSavings };
+};
+
 function pricing(price: number, sale: number | null) {
   const onSale = sale !== null && sale > 0 && sale < price;
   return {

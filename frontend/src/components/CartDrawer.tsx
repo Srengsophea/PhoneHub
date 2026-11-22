@@ -1,6 +1,6 @@
 import { Drawer, Button } from './ui';
 import { useCart } from '@/stores/cart';
-import { formatPrice, productImage } from '@/lib/format';
+import { formatPrice, productImage, cartItemPricing } from '@/lib/format';
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +12,16 @@ export function CartDrawer() {
     setOpen(false);
     navigate('/checkout');
   };
+
+  const { originalSubtotal, productSavings } = cart.items.reduce(
+    (acc, item) => {
+      const p = cartItemPricing(item);
+      acc.originalSubtotal += p.lineOriginal ?? p.lineTotal;
+      acc.productSavings += p.lineSavings;
+      return acc;
+    },
+    { originalSubtotal: 0, productSavings: 0 }
+  );
 
   return (
     <Drawer
@@ -27,13 +37,25 @@ export function CartDrawer() {
         cart.items.length > 0 ? (
           <div className="space-y-4">
             <div className="space-y-1.5 text-sm">
+              {productSavings > 0 && (
+                <>
+                  <div className="flex justify-between text-zinc-500">
+                    <span>Original Price</span>
+                    <span className="text-zinc-400 line-through">{formatPrice(originalSubtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-600 font-medium">
+                    <span>Product Discount</span>
+                    <span>-{formatPrice(productSavings)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between text-zinc-500">
                 <span>Subtotal</span>
                 <span className="font-medium text-zinc-900">{formatPrice(cart.subtotal)}</span>
               </div>
               {Number(cart.discount_amount) > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>Discount</span>
+                <div className="flex justify-between text-emerald-600 font-medium">
+                  <span>Coupon Discount</span>
                   <span>-{formatPrice(cart.discount_amount)}</span>
                 </div>
               )}
@@ -79,6 +101,7 @@ export function CartDrawer() {
         <div className="divide-y divide-zinc-100">
           {cart.items.map((item) => {
             const itemBusy = pendingItemIds.includes(item.id);
+            const priceInfo = cartItemPricing(item);
             return (
               <div key={item.id} className="p-4 flex gap-4 items-center">
                 <img
@@ -93,7 +116,26 @@ export function CartDrawer() {
                       {item.variant.ram} / {item.variant.storage} • {item.variant.color}
                     </p>
                   )}
-                  <p className="text-sm font-bold text-zinc-900 mt-1">{formatPrice(item.unit_price)}</p>
+                  <div className="mt-1 flex items-baseline gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-zinc-950">
+                      {formatPrice(priceInfo.lineTotal)}
+                    </span>
+                    {priceInfo.lineOriginal && (
+                      <span className="text-xs text-zinc-400 line-through">
+                        {formatPrice(priceInfo.lineOriginal)}
+                      </span>
+                    )}
+                    {priceInfo.discountPct > 0 && (
+                      <span className="text-[11px] font-bold text-emerald-600">
+                        -{priceInfo.discountPct}%
+                      </span>
+                    )}
+                  </div>
+                  {item.quantity > 1 && (
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      {formatPrice(priceInfo.current)} each
+                    </p>
+                  )}
                 </div>
 
                 {/* Quantity Controls */}

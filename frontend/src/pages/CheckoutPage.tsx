@@ -4,7 +4,7 @@ import { ShieldCheck, Truck, ArrowRight, CreditCard, Banknote, QrCode, MapPin, C
 import { useCart } from '@/stores/cart';
 import { useAuth } from '@/stores/auth';
 import { Button, Input } from '@/components/ui';
-import { formatPrice, productImage, toNumber } from '@/lib/format';
+import { formatPrice, productImage, toNumber, cartItemPricing } from '@/lib/format';
 import api, { getErrorMessage } from '@/lib/api';
 import { KHQRModal } from '@/components/KHQRModal';
 import { generateKHQR, type GeneratedKHQR, BAKONG_ACCOUNT_ID, MERCHANT_NAME } from '@/lib/khqr';
@@ -468,22 +468,32 @@ export function CheckoutPage() {
 
             {/* Cart Items List */}
             <div className="divide-y divide-zinc-200/60 max-h-64 overflow-y-auto pr-1">
-              {cart.items.map((it) => (
-                <div key={it.id} className="py-3 flex items-center gap-3">
-                  <img
-                    src={productImage(it.product)}
-                    alt=""
-                    className="h-12 w-12 rounded-xl object-contain bg-white p-1 border border-zinc-100"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-zinc-900 truncate">{it.product.name}</p>
-                    <p className="text-[11px] text-zinc-500">Qty: {it.quantity}</p>
+              {cart.items.map((it) => {
+                const p = cartItemPricing(it);
+                return (
+                  <div key={it.id} className="py-3 flex items-center gap-3">
+                    <img
+                      src={productImage(it.product)}
+                      alt=""
+                      className="h-12 w-12 rounded-xl object-contain bg-white p-1 border border-zinc-100"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-zinc-900 truncate">{it.product.name}</p>
+                      <p className="text-[11px] text-zinc-500">Qty: {it.quantity}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-bold text-zinc-900 block">
+                        {formatPrice(p.lineTotal)}
+                      </span>
+                      {p.lineOriginal && (
+                        <span className="text-[11px] text-zinc-400 line-through block">
+                          {formatPrice(p.lineOriginal)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-zinc-900">
-                    {formatPrice(it.unit_price)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Coupon field */}
@@ -501,31 +511,58 @@ export function CheckoutPage() {
             </form>
 
             {/* Price breakdown */}
-            <div className="space-y-2 border-t border-zinc-200/60 pt-4 text-sm">
-              <div className="flex justify-between text-zinc-600">
-                <span>Subtotal</span>
-                <span className="font-medium text-zinc-900">{formatPrice(cart.subtotal)}</span>
-              </div>
+            {(() => {
+              const summary = cart.items.reduce(
+                (acc, it) => {
+                  const p = cartItemPricing(it);
+                  acc.originalSubtotal += p.lineOriginal ?? p.lineTotal;
+                  acc.productSavings += p.lineSavings;
+                  return acc;
+                },
+                { originalSubtotal: 0, productSavings: 0 }
+              );
+              return (
+                <div className="space-y-2 border-t border-zinc-200/60 pt-4 text-sm">
+                  {summary.productSavings > 0 && (
+                    <>
+                      <div className="flex justify-between text-zinc-500">
+                        <span>Original Price</span>
+                        <span className="text-zinc-400 line-through">
+                          {formatPrice(summary.originalSubtotal)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-emerald-600 font-medium">
+                        <span>Product Discount</span>
+                        <span>-{formatPrice(summary.productSavings)}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Subtotal</span>
+                    <span className="font-medium text-zinc-900">{formatPrice(cart.subtotal)}</span>
+                  </div>
 
-              {Number(cart.discount_amount) > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>Coupon Savings</span>
-                  <span>-{formatPrice(cart.discount_amount)}</span>
+                  {Number(cart.discount_amount) > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-medium">
+                      <span>Coupon Savings</span>
+                      <span>-{formatPrice(cart.discount_amount)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Express Shipping</span>
+                    <span className="font-medium text-zinc-900">
+                      {Number(cart.shipping_fee) === 0 ? 'FREE' : formatPrice(cart.shipping_fee)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between pt-3 border-t border-zinc-200 text-lg font-extrabold text-zinc-950">
+                    <span>Total Due</span>
+                    <span>{formatPrice(cart.total_amount)}</span>
+                  </div>
                 </div>
-              )}
-
-              <div className="flex justify-between text-zinc-600">
-                <span>Express Shipping</span>
-                <span className="font-medium text-zinc-900">
-                  {Number(cart.shipping_fee) === 0 ? 'FREE' : formatPrice(cart.shipping_fee)}
-                </span>
-              </div>
-
-              <div className="flex justify-between pt-3 border-t border-zinc-200 text-lg font-extrabold text-zinc-950">
-                <span>Total Due</span>
-                <span>{formatPrice(cart.total_amount)}</span>
-              </div>
-            </div>
+              );
+            })()}
 
             <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
