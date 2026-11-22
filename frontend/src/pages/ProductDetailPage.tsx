@@ -652,7 +652,8 @@ export function ProductDetailPage() {
                     <button
                       type="button"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base"
+                      disabled={quantity <= 1}
+                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-base select-none"
                       aria-label="Decrease quantity"
                     >
                       -
@@ -663,7 +664,7 @@ export function ProductDetailPage() {
                     <button
                       type="button"
                       onClick={() => setQuantity(quantity + 1)}
-                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base"
+                      className="h-8 w-8 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base select-none"
                       aria-label="Increase quantity"
                     >
                       +
@@ -734,20 +735,23 @@ export function ProductDetailPage() {
             {/* Desktop Layout (sm:flex): Aligned single row */}
             <div className="hidden sm:flex items-center gap-3">
               {/* Qty Selector */}
-              <div className="flex items-center border border-zinc-200 rounded-md h-12 px-3.5 bg-zinc-50/50 shrink-0">
+              <div className="flex items-center border border-zinc-200 rounded-md h-12 px-3.5 bg-zinc-50/50 shrink-0 select-none">
                 <span className="text-xs font-bold text-zinc-400 mr-3">Qty:</span>
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-2 font-bold text-zinc-600 hover:text-zinc-950 transition text-base"
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                  className="h-7 w-7 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-base"
                 >
                   -
                 </button>
-                <span className="px-3 font-bold text-sm text-zinc-950">{quantity}</span>
+                <span className="px-3 font-bold text-sm text-zinc-950 min-w-[32px] text-center">{quantity}</span>
                 <button
                   type="button"
                   onClick={() => setQuantity(quantity + 1)}
-                  className="px-2 font-bold text-zinc-600 hover:text-zinc-950 transition text-base"
+                  aria-label="Increase quantity"
+                  className="h-7 w-7 rounded flex items-center justify-center font-bold text-zinc-600 cursor-pointer hover:text-zinc-950 hover:bg-zinc-200/60 active:scale-95 transition text-base"
                 >
                   +
                 </button>

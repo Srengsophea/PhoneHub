@@ -91,7 +91,7 @@ export const useCart = create<CartState>((set, get) => {
         set({ cart: emptyCart, loading: false });
       }
     },
-    add: (productId, variantId = null, quantity = 1, openDrawer = true) => {
+    add: (productId, variantId = null, quantity = 1, openDrawer = false) => {
       return run(() => api.post('/cart/items', { product_id: productId, variant_id: variantId, quantity }), openDrawer);
     },
     update: async (itemId, quantity) => {
