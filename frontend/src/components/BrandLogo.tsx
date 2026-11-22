@@ -183,7 +183,18 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     );
   }
 
-  // 15. Huawei: Red petal emblem
+  // 15. Tecno: Clean cobalt blue modern geometric wordmark
+  if (normalized.includes('tecno')) {
+    return (
+      <div className={`flex items-center justify-center ${className}`}>
+        <span className="font-sans font-black tracking-[0.18em] text-xs uppercase text-[#0057FF] select-none">
+          TECNO
+        </span>
+      </div>
+    );
+  }
+
+  // 16. Huawei: Red petal emblem
   if (normalized.includes('huawei')) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
